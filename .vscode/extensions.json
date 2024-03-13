@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "nyxiative.rust-and-friends",
+        "rust-lang.rust-analyzer",
+        "statiolake.vscode-rustfmt",
+        "swellaby.vscode-rust-test-adapter"
+    ]
+}
