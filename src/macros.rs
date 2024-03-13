@@ -18,7 +18,7 @@
 /// ## 用例
 ///
 /// ```rust
-/// use enum_narsese::first;
+/// use nar_dev_utils::first;
 /// fn see(v: &str) -> &str {
 ///     // 匹配一个无意义的值，使用匹配守卫来确定「唯一进入的分支」
 ///     first! {
@@ -106,7 +106,7 @@ macro_rules! first {
 /// ## 用例
 ///
 /// ```rust
-/// use enum_narsese::show;
+/// use nar_dev_utils::show;
 /// fn see<'a>(v: &'a str, v2: &'a str) -> (&'a str, &'a str) {
 ///     // 用`show!`打印`v`、`v2`，不返回值
 ///     show!(&v, &v2;);
@@ -190,7 +190,7 @@ macro_rules! show {
 /// 用法：
 ///
 /// ```rust
-/// use enum_narsese::fail_tests;
+/// use nar_dev_utils::fail_tests;
 /// // 一般形式：函数名 {代码}
 /// fail_tests! {
 ///     失败测试的函数名 {
@@ -212,7 +212,7 @@ macro_rules! show {
 /// ## 用例
 ///
 /// ```rust
-/// use enum_narsese::fail_tests;
+/// use nar_dev_utils::fail_tests;
 /// fail_tests! {
 ///     fail {
 ///         panic!("这是一个测试")
@@ -290,7 +290,7 @@ macro_rules! fail_tests {
 /// # 用例
 ///
 /// ```rust
-/// use enum_narsese::asserts;
+/// use nar_dev_utils::asserts;
 /// asserts! {
 ///     1 + 1 > 1, // 判真
 ///     1 + 1 => 2, // 判等
@@ -351,7 +351,7 @@ macro_rules! asserts {
 /// ## 用例
 ///
 /// ```rust
-/// use enum_narsese::push_str;
+/// use nar_dev_utils::push_str;
 /// let mut s = String::new();
 /// push_str!(
 ///     &mut s;
@@ -380,7 +380,7 @@ macro_rules! push_str {
 /// # Example
 ///
 /// ```rust
-/// use enum_narsese::catch_flow;
+/// use nar_dev_utils::catch_flow;
 ///
 /// fn append(out: &mut String) {
 ///     out.push_str("hello, ");
@@ -412,7 +412,7 @@ macro_rules! catch_flow {
 /// # Example
 ///
 /// ```rust
-/// use enum_narsese::f_tensor;
+/// use nar_dev_utils::f_tensor;
 /// fn add(a: i32, b: i32) -> i32 {
 ///     a + b
 /// }
@@ -613,7 +613,7 @@ macro_rules! f_tensor {
 /// # Example
 ///
 /// ```rust
-/// use enum_narsese::f_parallel;
+/// use nar_dev_utils::f_parallel;
 /// fn add3(a: i32, b: i32, c: i32) -> i32 {
 ///     a + b + c
 /// }

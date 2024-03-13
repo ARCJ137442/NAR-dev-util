@@ -25,7 +25,7 @@ pub fn add_space_if_necessary_and_flush_buffer(
 ///
 /// # Example
 /// ```rust
-/// use enum_narsese::util::join_lest_multiple_separators;
+/// use nar_dev_utils::join_lest_multiple_separators;
 /// let mut s = String::new();
 /// join_lest_multiple_separators(&mut s, vec!["a", "", "b", "c", "", "d"].into_iter(), ",");
 /// assert_eq!(s, "a,b,c,d");
