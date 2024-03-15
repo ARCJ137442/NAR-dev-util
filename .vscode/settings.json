@@ -2,5 +2,8 @@
     "rust-analyzer.cargo.features": "all",
     "editor.formatOnSave": true,
     "rustTestExplorer.rootCargoManifestFilePath": "${workspace}/Cargo.toml",
-    "rustTestExplorer.logpanel": true
+    "rustTestExplorer.logpanel": true,
+    "cSpell.words": [
+        "doctest"
+    ]
 }

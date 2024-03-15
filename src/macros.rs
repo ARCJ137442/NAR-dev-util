@@ -193,6 +193,7 @@ macro_rules! show {
 /// use nar_dev_utils::fail_tests;
 /// // 一般形式：函数名 {代码}
 /// fail_tests! {
+///     /// 允许文档注释
 ///     失败测试的函数名 {
 ///         // 会导致panic的代码
 ///     }
@@ -200,10 +201,12 @@ macro_rules! show {
 /// }
 /// // 亦可：函数名 表达式/语句
 /// fail_tests! {
+///     /// 允许文档注释
 ///     失败测试的函数名 if true {panic!("会导致panic的表达式")} else {};
 ///     // ... 允许多条
 /// }
 /// fail_tests! {
+///     /// 允许文档注释
 ///     失败测试的函数名 panic!("会导致panic的语句");
 ///     // ... 允许多条
 /// }
@@ -214,24 +217,28 @@ macro_rules! show {
 /// ```rust
 /// use nar_dev_utils::fail_tests;
 /// fail_tests! {
+///     /// 失败测试
 ///     fail {
 ///         panic!("这是一个测试")
 ///     }
+///     /// 失败测试二号
 ///     fail2 {
 ///         panic!("这是另一个测试")
 ///     }
 /// }
 /// ```
 ///
-/// 将被转换为
+/// 将被等价转换为
 ///
 /// ```rust
+/// /// 失败测试
 /// #[test]
 /// #[should_panic]
 /// fn fail() {
 ///     panic!("这是一个测试")
 /// }
 ///
+/// /// 失败测试二号
 /// #[test]
 /// #[should_panic]
 /// fn fail2() {
@@ -239,7 +246,9 @@ macro_rules! show {
 /// }
 /// ```
 ///
-/// * 📝暂时还没法在文档字符串（不管是注释还是#[doc = "..."]）中插值
+/// * ✅【2024-03-15 20:15:20】现在借鉴[lazy_static](https://crates.io/crates/lazy_static)包，可以在测试中使用文档字符串了
+///   * 📝原理：文档字符串实际上是`#[doc = "一行文本…"]`的语法糖
+///   * 📝技法：使用`$(#[$attr:meta])*`匹配元数据，然后原样输出
 #[macro_export]
 macro_rules! fail_tests {
     // 匹配空块
@@ -247,8 +256,8 @@ macro_rules! fail_tests {
         // 无操作
     };
     // 匹配代码块
-    {$name:ident $code:block $($tail:tt)*} => {
-        /// 失败测试 | 代码块
+    {$(#[$attr:meta])* $name:ident $code:block $($tail:tt)*} => {
+        $(#[$attr])*
         #[test]
         #[should_panic]
         fn $name() {
@@ -258,8 +267,8 @@ macro_rules! fail_tests {
         fail_tests!($($tail)*);
     };
     // 匹配表达式
-    {$name:ident $code:expr; $($tail:tt)*} => {
-        /// 失败测试 | 表达式
+    {$(#[$attr:meta])* $name:ident $code:expr; $($tail:tt)*} => {
+        $(#[$attr])*
         #[test]
         #[should_panic]
         fn $name() {
@@ -269,8 +278,8 @@ macro_rules! fail_tests {
         fail_tests!($($tail)*);
     };
     // 匹配语句
-    {$name:ident $code:stmt; $($tail:tt)*} => {
-        /// 失败测试 | 语句
+    {$(#[$attr:meta])* $name:ident $code:stmt; $($tail:tt)*} => {
+        $(#[$attr])*
         #[test]
         #[should_panic]
         fn $name() {
