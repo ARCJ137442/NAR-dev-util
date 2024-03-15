@@ -15,20 +15,21 @@
 ///   * 📌SOLUTION：在文档代码块中引入`use 【库名】::*;`
 ///     * ❗不能用`crate` | `help: consider importing this macro`
 ///
-/// ## 用例
+/// ## 用法
+///
+/// ### 常规用法
 ///
 /// ```rust
 /// use nar_dev_utils::first;
 /// fn see(v: &str) -> &str {
-///     // 匹配一个无意义的值，使用匹配守卫来确定「唯一进入的分支」
 ///     first! {
 ///         v.is_empty() => "空的！",
-///         v.starts_with("0") => "以零开头！",
-///         v.starts_with("1") => "以一开头！",
-///         v.starts_with("2") => "以二开头！",
+///         v.starts_with('0') => "以零开头！",
+///         v.starts_with('1') => "以一开头！",
+///         v.starts_with('2') => "以二开头！",
 ///         v.len() > 5 => "超长字符串！",
-///         v.starts_with("3") => "以三开头！",
-///         _ => "这啥玩意…",
+///         v.starts_with('3') => "以三开头！",
+///         _ => "这啥玩意…", // fallback
 ///     }
 /// }
 /// ```
@@ -37,58 +38,180 @@
 ///
 /// ```rust
 /// fn see(v: &str) -> &str {
-///    match 0 {
-///         _ if v.is_empty() => "空的！",
-///         _ if v.starts_with("0") => "以零开头！",
-///         _ if v.starts_with("1") => "以一开头！",
-///         _ if v.starts_with("2") => "以二开头！",
-///         _ if v.len() > 5 => "超长字符串！",
-///         _ if v.starts_with("3") => "以三开头！",
-///         _ => "这啥玩意…",
-///     }
-/// }
-/// ```
-///
-/// 此`match`表达式等价于：
-///
-/// ```rust
-/// fn see(v: &str) -> &str {
 ///     if v.is_empty() {
 ///        "空的！"
-///     } else if v.starts_with("0") {
+///     } else if v.starts_with('0') {
 ///         "以零开头！"
-///     } else if v.starts_with("1") {
+///     } else if v.starts_with('1') {
 ///         "以一开头！"
-///     } else if v.starts_with("2") {
+///     } else if v.starts_with('2') {
 ///         "以二开头！"
 ///     } else if v.len() > 5 {
 ///         "超长字符串！"
-///     } else if v.starts_with("3") {
+///     } else if v.starts_with('3') {
 ///         "以三开头！"
 ///     } else {
-///         "这啥玩意…"
+///         "这啥玩意…" // fallback
 ///     }
 /// }
 /// ```
+///
+/// ### 结合「预处理函数」实现批量应用
+///
+/// ```rust
+/// use nar_dev_utils::first;
+/// fn see(v: &str) -> String {
+///     first! {
+///         // 格式：`(预处理输入) => (预处理输出)`
+///         (v.starts_with) => (str::to_string);
+///         '0' => "以零开头！",
+///         '1' => "以一开头！",
+///         '2' => "以二开头！",
+///         '3' => "以三开头！",
+///         _ => "这啥玩意…", // fallback
+///     }
+/// }
+/// ```
+///
+/// 将被转换成
+///
+/// ```rust
+/// fn see(v: &str) -> String {
+///     // 预处理输出展开：输出统一用`str::to_string`包裹
+///     str::to_string(
+///         // 预处理输入展开：统一插入`v.starts_with`
+///         if v.starts_with('0') {
+///             "以零开头！"
+///         } else if v.starts_with('1') {
+///             "以一开头！"
+///         } else if v.starts_with('2') {
+///             "以二开头！"
+///         } else if v.starts_with('3') {
+///             "以三开头！"
+///         } else {
+///             "这啥玩意…" // fallback
+///         }
+///     )
+/// }
+/// ```
+///
+/// ## 用例
+///
+/// ```rust
+/// use nar_dev_utils::{first, show, asserts};
+/// let v: &str = "1";
+/// // 测试1 不安排「预处理函数」 | 匹配一个无意义的值，使用匹配守卫来确定「唯一进入的分支」
+/// let v = first! {
+///     v.is_empty() => "空的！",
+///     v.starts_with('0') => "以零开头！",
+///     v.starts_with('1') => "以一开头！",
+///     v.starts_with('2') => "以二开头！",
+///     v.len() > 5 => "超长字符串！",
+///     v.starts_with('3') => "以三开头！",
+///     _ => "这啥玩意…",
+/// };
+/// // 测试2 使用「成员方法」预处理被匹配项 | 此时 v == "以一开头！"
+/// let v2 = first! {
+///     (v.starts_with) => (_);
+///     '0' => "以零开头！",
+///     '1' => "以一开头！",
+///     '2' => "以二开头！",
+///     '3' => "以三开头！",
+///     _ => "这啥玩意…",
+/// };
+/// // 测试3 使用「闭包」处理被匹配项，同时使用「路径」处理匹配值 | 此时 v2 == "这啥玩意…"
+/// let clj = |c| v2.contains(c);
+/// let v3 = first! {
+///     (clj) => (str::to_string);
+///     '这' => "「这」在里头！",
+///     '啥' => "「啥」在里头！",
+///     '玩' => "「玩」在里头！",
+///     '意' => "「意」在里头！",
+///     _ => "这啥玩意…",
+/// };
+/// // 测试4 使用「属性」同时处理被匹配项和匹配值
+/// struct F<I, R>(Box<dyn Fn(I) -> R>);
+/// let f = F(Box::new(clj)); // 检测的闭包
+/// let f2 = F(Box::new(Box::new)); // 装箱的闭包
+/// let v4 = first! {
+///     (f.0) => (f2.0);
+///     '这' => "「这」在里头！",
+///     '啥' => "「啥」在里头！",
+///     '玩' => "「玩」在里头！",
+///     '意' => "「意」在里头！",
+///     _ => "这啥玩意…",
+/// };
+/// // 展示&断言
+/// asserts! {
+///     show!(first! {@VALUE (1.cmp) &2}) => std::cmp::Ordering::Less
+///     show!(first! {@VALUE (std::any::type_name_of_val) &2}) => "i32"
+///     show!(v) => "以一开头！"
+///     show!(v2) => "这啥玩意…"
+///     show!(v3) => "「这」在里头！".to_string()
+///     show!(v4) => Box::new("「这」在里头！")
+/// }
+/// ```
+///
 #[macro_export]
 macro_rules! first {
-    // 第一条规则：最后一条保留`_`
+    // 第一种方法：直接匹配
+    // ! ❌不能在宏中使用不完整的表达式 如单独的`else`等
     { // * 📝←左边的括号只是标注「推荐用括弧」而对实际解析无限定作用
-        // ↓前边标注片段以「,」重复    后边分隔表达式↓
-        $($guardian:expr => $value:expr),* ,
-        // ↓对字面标识「_」无需`$(...)`引用
-        _ => $value_else:expr $(,)?
+        $guardian_1:expr => $value_1:expr, // ! ←此处必须要逗号分隔表达式，避免解析歧义
+        $( $guardian:expr => $value:expr ),*, // ! 逗号仍然必要
+        _ => $value_else:expr $(,)? // ←可选的尾后逗号
+        // ↑对字面标识「_」无需`$(...)`引用
+        // ! ↑但不能把`_ => `标注为可选：local ambiguity when calling macro `first`: multiple parsing options: built-in NTs expr ('value_else') or expr ('guardian').
     } => {
-        // 💭实际上转换为`if-else if-else`亦非不可
-        // 匹配无用的字符串常量`0`
-        match 0 {
-            // ↓这一行插入序列
-            $(_ if $guardian => $value,)*
-            _ => $value_else,
+        // 开头
+        if ($guardian_1) {
+            $value_1
         }
-    }; // ! ←记得分号分隔
-    // 「最后一条直接写」的规则会导致「表达式歧义」
-    // 📄``local ambiguity when calling macro `first`: multiple parsing options: built-in NTs expr ('value_else') or expr ('guardian').``
+        // 中间
+        $(
+            else if ($guardian) {
+                $value
+            }
+        )*
+        // 结尾
+        else {
+            $value_else
+        }
+    };
+    // 第二种方法：批量映射
+    { // * 📝←左边的括号只是标注「推荐用括弧」而对实际解析无限定作用
+        // * ↓🚩此处直接使用令牌树语法，然后在解析时强制使用圆括号解包
+        //   * ✨好处：无需考虑里边的内容（兼容任何`f(x)`语法），只要在展开时能拼上就行
+        $f_guardian:tt => $f_value:tt;
+        $guardian_1:expr => $value_1:expr, // ! ←此处必须要逗号分隔表达式，避免解析歧义
+        $( $guardian:expr => $value:expr ),*, // ! 逗号仍然必要
+        _ => $value_else:expr $(,)? // ←可选的尾后逗号
+        // ↑对字面标识「_」无需`$(...)`引用
+        // ! ↑但不能把`_ => `标注为可选：local ambiguity when calling macro `first`: multiple parsing options: built-in NTs expr ('value_else') or expr ('guardian').
+    } => {
+        // * 📝实际上「在所有出现value的地方处理」就相当于「先得出value，然后处理，再返回」
+        first!(@VALUE $f_value
+            // 开头
+            if (first!(@VALUE $f_guardian $guardian_1)) {
+                $value_1
+            }
+            // 中间
+            $(
+                else if (first!(@VALUE $f_guardian $guardian)) {
+                    $value
+                }
+            )*
+            // 结尾
+            else {
+                $value_else
+            }
+        )
+    };
+    ( @VALUE (_) $value:expr ) => { $value };
+    ( @VALUE ($($f:tt)+) $value:expr ) => {
+        // f   ( value )
+        $($f)+ ($value)
+    };
 }
 
 /// # `show!`：复现Julia的`@show`
