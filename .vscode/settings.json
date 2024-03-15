@@ -1,4 +1,6 @@
 {
     "rust-analyzer.cargo.features": "all",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "rustTestExplorer.rootCargoManifestFilePath": "${workspace}/Cargo.toml",
+    "rustTestExplorer.logpanel": true
 }

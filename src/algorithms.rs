@@ -1,6 +1,6 @@
 /// 存储一些常用的辅助算法
 /// * 🎯不依赖标准库
-use std::cmp::Ordering;
+use std::cmp::{Ord, Ordering};
 
 /// 二分查找
 /// * 🎯用于对某个**已排好序**的元素的查找
@@ -9,10 +9,32 @@ use std::cmp::Ordering;
 ///   * 此处「应该被插入的位置」指的是「插入之后它的索引」
 ///   * 亦即「插入之后会把当前位置的元素后移」
 ///   * 或「第一个大于该元素」的位置
+/// * 🚩现在直接使用[`T::cmp`]内联到「带判据二分查找」
+#[inline(always)]
 pub fn binary_search<T>(arr: &[T], target: &T) -> Result<usize, usize>
 where
-    T: std::cmp::Ord,
+    T: Ord,
 {
+    binary_search_by(arr, target, T::cmp)
+}
+
+/// 二分查找（使用「判据函数」比对大小）
+/// * 🎯用于对某个**已排好序**的元素的查找
+///   * 由此可用于从零渐近构造有序序列
+/// * 🎯找到某个元素的位置，或至少反映「它应该被插入的位置」
+///   * 此处「应该被插入的位置」指的是「插入之后它的索引」
+///   * 亦即「插入之后会把当前位置的元素后移」
+///   * 或「第一个大于该元素」的位置
+/// * 🚩【2024-03-15 16:42:44】泛化：将「有序大小判断」封装到函数`cmp`中
+///   * ✨这样不再需要约束「数组元素」「目标」的类型
+pub fn binary_search_by<T1, T2, F>(arr: &[T1], target: &T2, cmp: F) -> Result<usize, usize>
+where
+    F: Fn(&T2, &T1) -> Ordering,
+{
+    // 考虑「长度为零」的特殊情况：直接返回「应该插入第一个」
+    if arr.is_empty() {
+        return Err(0);
+    }
     // 初始化左右边界
     let mut left = 0;
     let mut right = arr.len() - 1;
@@ -20,7 +42,7 @@ where
     let mut mid = left + (right - left) / 2;
     while left <= right {
         mid = left + (right - left) / 2;
-        match target.cmp(&arr[mid]) {
+        match cmp(target, &arr[mid]) {
             // 相等⇒直接返回
             Ordering::Equal => return Ok(mid),
             // 大于⇒左边界缩小
@@ -33,7 +55,10 @@ where
         }
     }
     // 找不到⇒返回「应该插入的位置」 | ⚠️【2024-03-15 10:51:34】此处可能会有一个索引的偏差
-    Err(if arr[mid] < *target { mid + 1 } else { mid })
+    Err(match cmp(target, &arr[mid]) == Ordering::Greater {
+        true => mid + 1,
+        false => mid,
+    })
 }
 
 /// 单元测试

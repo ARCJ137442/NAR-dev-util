@@ -12,10 +12,10 @@ mod floats;
 pub use floats::*;
 
 // 字符串处理
-#[cfg(feature = "str_process")]
-mod str_process;
-#[cfg(feature = "str_process")]
-pub use str_process::*;
+#[cfg(feature = "str_processing")]
+mod str_processing;
+#[cfg(feature = "str_processing")]
+pub use str_processing::*;
 
 // 迭代器
 #[cfg(feature = "iterators")]
