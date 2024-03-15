@@ -22,3 +22,9 @@ pub use str_process::*;
 mod iterators;
 #[cfg(feature = "iterators")]
 pub use iterators::*;
+
+// 算法
+#[cfg(feature = "algorithms")]
+mod algorithms;
+#[cfg(feature = "algorithms")]
+pub use algorithms::*;
