@@ -279,6 +279,15 @@ where
             .all(|_| self.head_next().is_some())
     }
 
+    /// 缓冲区迭代（多次）
+    /// * 🚩不断从**缓冲区**/**内置迭代器**中拿取元素，然后传递进指定的「处理函数」中
+    ///   * 单步参见[`Self::buffer_next`]
+    pub fn buffer_next_n(&mut self, n: usize, handler: impl Fn(Option<T>)) {
+        for _ in 0..n {
+            handler(self.buffer_next());
+        }
+    }
+
     // ! ❌【2024-03-04 20:58:35】实践：因为「打包后需要从中借用值」的借用问题，再次弃用「独立使用『头迭代器』管理迭代过程」的想法
     // ! ❌【2024-03-04 21:00:13】基于「迭代状态」的「状态机模型」也不可用：「头迭代」「缓冲区迭代」迭代出的是两种不同的类型`T`与`&T`，也没法统一
     // /// 基于「头迭代」生成「头迭代器」
@@ -414,6 +423,29 @@ where
         }
         // 比对都没失败⇒成功⇒`true`
         true
+    }
+
+    /// 判断从「『缓冲区头』后i个索引处」开始是否以`other_iter`的元素开头
+    /// * ⚠️此处的`i`是相对坐标，0=>缓冲区头，以此类推
+    /// * 🎯解析器进行「前缀匹配」不一定在缓冲区头部匹配
+    /// TODO: 有待完成
+    pub fn starts_with_at(&mut self, i: usize, mut other_iter: impl Iterator<Item = T>) -> bool {
+        #![allow(unused)]
+        // TODO: 有待完成
+        todo!("有待完成！")
+    }
+
+    /// 从另一个字符迭代器中返回「缓冲区之后下一个匹配的子串」的开头位置
+    /// * 🎯使用「前缀匹配字符串」在识别到「左括弧」后寻找「右括弧」
+    /// * 🚩实际上可以直接上暴力算法：不断进行前缀匹配，失败了就挪位，直到匹配成功
+    ///   * 💭需要对子串进行缓冲，可能需要构造另一个缓冲区迭代器
+    pub fn find_next_substring(&mut self, mut pattern: impl Iterator<Item = T>) -> Option<usize> {
+        #![allow(unused)]
+        // 先构造子串的缓冲区迭代器
+        let pattern = BufferIterator::new(pattern);
+        // 然后开始匹配
+        // TODO: 有待完成
+        todo!("有待完成！")
     }
 
     /// 若以`other_iter`的元素开头⇒跳过元素

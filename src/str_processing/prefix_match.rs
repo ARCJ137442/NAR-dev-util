@@ -25,7 +25,7 @@ pub trait PrefixMatch<PrefixTerm> {
     /// * 🎯用于后续匹配
     /// * ⚠️因此需要【倒序】匹配：长的字串先来，然后是短的
     ///   * 避免"&"比"&&"优先
-    fn prefixes_and_items<'a>(&'a self) -> impl Iterator<Item = &'a PrefixTerm> + 'a
+    fn prefixes_terms<'a>(&'a self) -> impl Iterator<Item = &'a PrefixTerm> + 'a
     where
         PrefixTerm: 'a;
 
@@ -44,7 +44,7 @@ pub trait PrefixMatch<PrefixTerm> {
         // }
         // None
         // ✅迭代器版本
-        self.prefixes_and_items()
+        self.prefixes_terms()
             .find(|&term| to_match.starts_with(self.get_prefix_from_term(term)))
     }
 }
@@ -109,7 +109,7 @@ impl PrefixMatch<String> for PrefixMatchDict {
         }
     }
 
-    fn prefixes_and_items<'a>(&'a self) -> impl Iterator<Item = &'a String> + 'a
+    fn prefixes_terms<'a>(&'a self) -> impl Iterator<Item = &'a String> + 'a
     where
         String: 'a,
     {
@@ -179,7 +179,7 @@ impl<T> PrefixMatch<(String, T)> for PrefixMatchDictPair<T> {
         }
     }
 
-    fn prefixes_and_items<'a>(&'a self) -> impl Iterator<Item = &'a (String, T)> + 'a
+    fn prefixes_terms<'a>(&'a self) -> impl Iterator<Item = &'a (String, T)> + 'a
     where
         (String, T): 'a,
     {
