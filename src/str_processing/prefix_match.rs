@@ -1,7 +1,7 @@
 //! 与「前缀匹配」有关的工具结构与算法
 //! * 🎯最初用于字符串parser
 
-use crate::{binary_search, binary_search_by, char_slice_has_prefix};
+use crate::char_slice_has_prefix;
 
 /// 前缀匹配（抽象特征）
 /// * 🎯用于存储前缀，封装如下两个逻辑
@@ -78,6 +78,38 @@ impl PrefixMatchDict {
                 .collect::<Vec<_>>(),
         }
     }
+
+    /// 搜索 | 使用二分查找
+    /// * 🎯构造可方便替换的「查找」逻辑
+    /// * 🚩找到⇒位置，没找到⇒应该插入的位置
+    #[cfg(feature = "algorithms")]
+    #[inline(always)]
+    pub fn search(&self, prefix: &String) -> Result<usize, usize> {
+        use crate::binary_search;
+        binary_search(&self.prefixes, prefix)
+    }
+
+    /// 搜索 | 使用线性查找
+    /// * 🎯构造可方便替换的「查找」逻辑
+    /// * 🚩找到⇒位置，没找到⇒应该插入的位置
+    #[cfg(not(feature = "algorithms"))]
+    #[inline(always)]
+    pub fn search(&self, prefix: &String) -> Result<usize, usize> {
+        // 线性匹配
+        use std::cmp::Ordering;
+        for (i, existed) in self.prefixes.iter().enumerate() {
+            match prefix.cmp(existed) {
+                // =
+                Ordering::Equal => return Ok(i),
+                // < | 确保匹配到「第一个比自己大的」
+                Ordering::Less => return Err(i),
+                // >
+                Ordering::Greater => (),
+            }
+        }
+        // 否则插入末尾
+        Err(self.prefixes.len())
+    }
 }
 
 #[macro_export]
@@ -106,9 +138,9 @@ impl PrefixMatch<String> for PrefixMatchDict {
         term
     }
 
-    // 🚩使用二分查找搜寻
+    // 调用特定的查找函数
     fn insert(&mut self, prefix: String) {
-        match binary_search(&self.prefixes, &prefix) {
+        match self.search(&prefix) {
             // 已有⇒跳过
             Ok(..) => {}
             // 未找到
@@ -147,6 +179,38 @@ impl<T> PrefixMatchDictPair<T> {
                 .collect::<Vec<_>>(),
         }
     }
+
+    /// 搜索 | 使用二分查找
+    /// * 🎯构造可方便替换的「查找」逻辑
+    /// * 🚩找到⇒位置，没找到⇒应该插入的位置
+    #[cfg(feature = "algorithms")]
+    #[inline(always)]
+    pub fn search(&self, term: &(String, T)) -> Result<usize, usize> {
+        use crate::binary_search_by;
+        binary_search_by(&self.prefixes, term, |existed, new| existed.0.cmp(&new.0))
+    }
+
+    /// 搜索 | 使用线性查找
+    /// * 🎯构造可方便替换的「查找」逻辑
+    /// * 🚩找到⇒位置，没找到⇒应该插入的位置
+    #[cfg(not(feature = "algorithms"))]
+    #[inline(always)]
+    pub fn search(&self, term: &(String, T)) -> Result<usize, usize> {
+        // 线性匹配
+        use std::cmp::Ordering;
+        for (i, existed) in self.prefixes.iter().enumerate() {
+            match term.0.cmp(&existed.0) {
+                // =
+                Ordering::Equal => return Ok(i),
+                // < | 确保匹配到「第一个比自己大的」
+                Ordering::Less => return Err(i),
+                // >
+                Ordering::Greater => (),
+            }
+        }
+        // 否则插入末尾
+        Err(self.prefixes.len())
+    }
 }
 
 #[macro_export]
@@ -178,7 +242,7 @@ impl<T> PrefixMatch<(String, T)> for PrefixMatchDictPair<T> {
     }
     /// 插入一个字符串元素
     fn insert(&mut self, term: (String, T)) {
-        match binary_search_by(&self.prefixes, &term, |existed, new| existed.0.cmp(&new.0)) {
+        match self.search(&term) {
             // 已有⇒跳过
             Ok(..) => {}
             // 未找到

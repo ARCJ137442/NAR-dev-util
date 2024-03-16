@@ -5,10 +5,8 @@ mod join;
 pub use join::*;
 
 // 前缀匹配
-// ! 目前因「前缀匹配字典」在`insert`处需要二分查找，只有启用`algorithms`才能使用
-#[cfg(feature = "algorithms")]
+// * ✨现在内置了「线性查找」的解决方案，模块层面上暂时不需要[`algorithms`]特性了
 mod prefix_match;
-#[cfg(feature = "algorithms")]
 pub use prefix_match::*;
 
 // 字符数组切片
