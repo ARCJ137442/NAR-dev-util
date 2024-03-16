@@ -308,6 +308,20 @@ where
     //     })
     // }
 
+    /// 缓冲区判别
+    /// * 🎯相比`self.buffer_get(index).is_some()`有更多优化
+    /// * 📌判断整个迭代器「能不能取到『相对缓冲区头部index处的元素』」
+    ///   * 📌以「缓冲区头索引」为起点（缓冲区头索引=>0）
+    /// * 🚩直接判断并返回真/假
+    /// * ⚠️越界⇒尝试从「内部迭代器」中取出元素
+    ///   * 实在取不到⇒false
+    pub fn buffer_has(&mut self, index: usize) -> bool {
+        // 先判断「index是否在缓冲区内」
+        index < self.len_buffer()
+        // 然后判断「缓冲区头能不能延伸到index处」
+        || self.head_next_n(index - self.len_buffer() + 1)
+    }
+
     /// 缓冲区获取
     /// * 📌自缓冲区以**相对位置**索引元素
     ///   * 📌以「缓冲区头索引」为起点（缓冲区头索引=>0）
@@ -425,27 +439,78 @@ where
         true
     }
 
-    /// 判断从「『缓冲区头』后i个索引处」开始是否以`other_iter`的元素开头
+    /// 判断从「『缓冲区头』后`buffer_offset`个索引处」开始是否以`other_iter`的元素开头
     /// * ⚠️此处的`i`是相对坐标，0=>缓冲区头，以此类推
     /// * 🎯解析器进行「前缀匹配」不一定在缓冲区头部匹配
-    /// TODO: 有待完成
-    pub fn starts_with_at(&mut self, i: usize, mut other_iter: impl Iterator<Item = T>) -> bool {
-        #![allow(unused)]
-        // TODO: 有待完成
-        todo!("有待完成！")
+    /// * ⚠️【2024-03-16 17:20:11】目前要求子串必须有限
+    ///   * 会进行collect
+    pub fn starts_with_at(
+        &mut self,
+        buffer_offset: usize,
+        pattern: impl Iterator<Item = T>,
+    ) -> bool {
+        // 先构造子串的缓冲区迭代器
+        let items = pattern.collect::<Vec<_>>();
+        // 空字串⇒直接返回`true`
+        if items.is_empty() {
+            return true;
+        }
+        let len_items = items.len();
+        // 确保自身（偏移之后）长度足够，没有⇒返回`None`
+        let expected_pattern_end_i = buffer_offset + len_items - 1;
+        self.buffer_has(expected_pattern_end_i)
+            // 然后逐个扫描检查
+            && self._starts_with_at_unchecked(buffer_offset, items.iter())
     }
 
-    /// 从另一个字符迭代器中返回「缓冲区之后下一个匹配的子串」的开头位置
+    /// 【内部】判断从「『缓冲区头』后`buffer_offset`个索引处」开始是否以`other_iter`的元素开头
+    /// * ⚠️不检查「自身是否有足够元素在缓冲区」
+    /// * ⚠️【2024-03-16 17:20:11】目前要求子串必须有限
+    ///   * 会进行collect
+    fn _starts_with_at_unchecked<'a>(
+        &'a mut self,
+        buffer_offset: usize,
+        other_iter: impl Iterator<Item = &'a T>,
+    ) -> bool {
+        other_iter
+            .enumerate()
+            .all(|(pattern_i, item)| self.buffer_get(buffer_offset + pattern_i).unwrap() == item)
+    }
+
+    /// 从另一个字符迭代器中返回「缓冲区之后下一个匹配的子串」的**开头位置**
     /// * 🎯使用「前缀匹配字符串」在识别到「左括弧」后寻找「右括弧」
     /// * 🚩实际上可以直接上暴力算法：不断进行前缀匹配，失败了就挪位，直到匹配成功
     ///   * 💭需要对子串进行缓冲，可能需要构造另一个缓冲区迭代器
-    pub fn find_next_substring(&mut self, mut pattern: impl Iterator<Item = T>) -> Option<usize> {
-        #![allow(unused)]
+    /// * ⚠️【2024-03-16 17:20:11】目前要求子串必须有限
+    ///   * 会进行collect
+    /// * 📌不会让「缓冲区头」位移
+    pub fn find_next_prefix(&mut self, pattern: impl Iterator<Item = T>) -> Option<usize> {
         // 先构造子串的缓冲区迭代器
-        let pattern = BufferIterator::new(pattern);
+        let items = pattern.collect::<Vec<_>>();
+        // 空字串⇒直接返回`Some(0)`
+        if items.is_empty() {
+            return Some(0);
+        }
+        let len_items = items.len();
+        // ! 📝【2024-03-16 16:41:47】迭代器`find`/`position`的方法行不通：闭包内重复借用
         // 然后开始匹配
-        // TODO: 有待完成
-        todo!("有待完成！")
+        let mut head_offset = 0;
+        loop {
+            // 确保自身（偏移之后）长度足够，没有⇒返回`None`
+            let expected_pattern_end_i = head_offset + len_items - 1;
+            if !self.buffer_has(expected_pattern_end_i) {
+                break None;
+            }
+            // 尝试逐个匹配
+            let found_relative_prefix = self._starts_with_at_unchecked(head_offset, items.iter());
+            // 检查是否找到
+            match found_relative_prefix {
+                // 找到⇒返回`Some(head_offset)`
+                true => break Some(head_offset),
+                // 未找到⇒头索引偏移量递增
+                false => head_offset += 1,
+            }
+        }
     }
 
     /// 若以`other_iter`的元素开头⇒跳过元素
@@ -512,7 +577,7 @@ impl IntoChars for String {
 /// 单元测试
 #[cfg(test)]
 mod tests {
-    use crate::asserts;
+    use crate::{asserts, show};
 
     use super::*;
 
@@ -735,6 +800,94 @@ mod tests {
             iter.is_buffer_empty(), // 此时缓冲区为空
             iter.len_buffer() => 0 // 此时缓冲区长度清零
             iter.buffer_head() => 4 // 此时「缓冲区头索引」增加到`4`（为空之后比「头索引」大）
+        }
+    }
+
+    #[test]
+    fn test_buffer() {
+        // 测试数据
+        let text = "abc123αβγ你我他";
+
+        // 构造迭代器
+        let mut iter = BufferIterator::new(text.chars());
+
+        // 前缀查找1: "123"
+        let pattern = "123";
+        let f = iter.find_next_prefix(pattern.chars());
+        show!(&iter.buffer, &f);
+        asserts! {
+            // 前缀查找成功：从第四个字符开始
+            f => Some(3),
+            // 缓冲区内容：直到模式最后边
+            iter.buffer => ['a', 'b', 'c', '1', '2', '3'],
+            // 缓冲区状态 //
+            iter.head() => 5 // 此时头索引更新到了`5`——为了「前缀匹配」一直在增加索引，"abc123"最后一个
+            iter.is_began() => true // 此时已开始迭代
+            iter.is_ended() => false // 此时仍未结束
+            iter.is_buffer_empty() => false // 此时缓冲区非空
+            iter.len_buffer() => 6 // 此时缓冲区长度为`6` | "abc123"
+            iter.buffer_head() => 0 // 此时「缓冲区头索引」未变：未消耗缓冲区
+        }
+
+        // 前缀查找2: 空字串
+        let pattern = "";
+        let f = iter.find_next_prefix(pattern.chars());
+        show!(&iter.buffer, &f);
+        asserts! {
+            // 前缀查找成功：空字串第一个「字符」就是
+            f => Some(0),
+            // 缓冲区内容：仍然不变
+            iter.buffer => ['a', 'b', 'c', '1', '2', '3'],
+            // 缓冲区状态 //
+            iter.head() => 5 // 此时头索引更新到了`5`——为了「前缀匹配」一直在增加索引，"abc123"最后一个
+            iter.is_began() => true // 此时已开始迭代
+            iter.is_ended() => false // 此时仍未结束
+            iter.is_buffer_empty() => false // 此时缓冲区非空
+            iter.len_buffer() => 6 // 此时缓冲区长度为`6` | "abc123"
+            iter.buffer_head() => 0 // 此时「缓冲区头索引」未变：未消耗缓冲区
+        }
+
+        // 前缀查找3: 缓冲区内
+        let pattern = "abc";
+        let f = iter.find_next_prefix(pattern.chars());
+        show!(&iter.buffer, &f);
+        asserts! {
+            // 前缀查找成功：第一个开始就是
+            f => Some(0),
+            // 缓冲区内容：维持不变
+            iter.buffer => ['a', 'b', 'c', '1', '2', '3'],
+            // 缓冲区状态 //
+            iter.head() => 5 // 头索引未更新
+            iter.is_began() => true // 此时已开始迭代
+            iter.is_ended() => false // 此时仍未结束
+            iter.is_buffer_empty() => false // 此时缓冲区非空
+            iter.len_buffer() => 6 // 此时缓冲区长度为`6` | "abc123"
+            iter.buffer_head() => 0 // 此时「缓冲区头索引」未变：未消耗缓冲区
+        }
+
+        // 缓冲区转交给字符串 | "abc123"
+        let mut s = String::new();
+        for _ in 0..iter.len_buffer() {
+            s.push(iter.buffer_next().unwrap());
+        }
+        show!(s);
+
+        // 前缀查找4: 单字符
+        let pattern = '我';
+        let f = iter.find_next_prefix([pattern].into_iter());
+        show!(&iter.buffer, &f);
+        asserts! {
+            // 前缀查找成功："αβγ你我"
+            f => Some(4),
+            // 缓冲区内容：五个字符
+            iter.buffer => ['α', 'β', 'γ', '你', '我'],
+            // 缓冲区状态 //
+            iter.head() => 10 // 此时头索引更新到了`10`——为了「前缀匹配」增加了索引
+            iter.is_began() => true // 此时已开始迭代
+            iter.is_ended() => false // 此时仍未结束
+            iter.is_buffer_empty() => false // 此时缓冲区非空
+            iter.len_buffer() => 5 // 此时缓冲区长度为`5` | "αβγ你我"
+            iter.buffer_head() => 6 // 此时「缓冲区头索引」改变：从（以原迭代器为开头）第七个字符开始
         }
     }
 }
