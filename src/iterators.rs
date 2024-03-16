@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use crate::catch_flow;
+
 /// 函数式迭代器
 /// * 🎯最初用于「基于**闭包/函数指针**灵活定义迭代器」
 /// * 🚩直接定义一个[`FnIterator::next`]，并直接在[`Iterator::next`]中执行
@@ -128,6 +130,7 @@ where
     is_ended: bool,
 }
 
+/// 通用实现
 impl<T, I> BufferIterator<T, I>
 where
     I: Iterator<Item = T>,
@@ -288,6 +291,28 @@ where
         }
     }
 
+    /// 头消耗（多次）
+    /// * 🚩执行多次头迭代（后续可优化）
+    ///   * 仅消耗，不返回任何值
+    pub fn head_consume_n(&mut self, n: usize) {
+        // 重复n次「头迭代」
+        for _ in 0..n {
+            // 只执行，不处理执行结果
+            let _ = self.head_next();
+        }
+    }
+
+    /// 缓冲区消耗（多次）
+    /// * 🚩不断从**缓冲区**/**内置迭代器**中拿取元素，然后传递进指定的「处理函数」中
+    ///   * 单步参见[`Self::buffer_next`]
+    pub fn buffer_consume_n(&mut self, n: usize) {
+        // 重复n次「缓冲区迭代」
+        for _ in 0..n {
+            // 只执行，不处理执行结果
+            let _ = self.buffer_next();
+        }
+    }
+
     // ! ❌【2024-03-04 20:58:35】实践：因为「打包后需要从中借用值」的借用问题，再次弃用「独立使用『头迭代器』管理迭代过程」的想法
     // ! ❌【2024-03-04 21:00:13】基于「迭代状态」的「状态机模型」也不可用：「头迭代」「缓冲区迭代」迭代出的是两种不同的类型`T`与`&T`，也没法统一
     // /// 基于「头迭代」生成「头迭代器」
@@ -394,7 +419,7 @@ where
     }
 }
 
-/// 对额外实现了[`PartialEq`]的元素实现「以指定迭代元素开头」等方法
+/// 对额外实现了[`PartialEq`]的元素实现「前缀匹配」相关方法
 impl<T, I> BufferIterator<T, I>
 where
     T: Clone + PartialEq,
@@ -539,8 +564,43 @@ where
     }
 }
 
+/// 对「字符迭代器」实现的专用方法
+impl<I> BufferIterator<char, I>
+where
+    I: Iterator<Item = char>,
+{
+    /// 收集一定量的缓冲区内容到字符串
+    /// * 🚩改变传入的字符串
+    /// * ⚠️需要确保缓冲区长度足够
+    pub fn buffer_collect_to_string(&mut self, target: &mut String, len: usize) {
+        // 遍历一定长度
+        for _ in 0..len {
+            // 取出字符 | 肯定有
+            let ch = self.buffer.pop_front().unwrap();
+            // 将字符加入字符串
+            target.push(ch);
+        }
+    }
+
+    /// 收集整个缓冲区内容到字符串
+    /// * 🚩改变传入的字符串
+    /// * ⚠️会清空缓冲区
+    pub fn collect_buffer_to_string(&mut self, target: &mut String) {
+        // 收集「自身长度」个内容
+        self.buffer_collect_to_string(target, self.buffer.len())
+    }
+
+    /// 收集缓冲区内容到新字符串
+    /// * 🚩与[`collect_buffer_to_string`]原理相同，但传入进一个新的字符串中
+    pub fn collect_buffer_to_new_string(&mut self) -> String {
+        // 直接新建字符串，然后传递给`collect_buffer_to_string`，最后返回这字符串
+        catch_flow!({String::new()} => {self.collect_buffer_to_string})
+    }
+}
 /// 为字符串实现`into_chars`方法
 /// * 📄参考：https://internals.rust-lang.org/t/is-there-a-good-reason-why-string-has-no-into-chars/19496/7
+/// * 🎯最初用于「Narsese词法解析器」的「静态字串→字符迭代器」的完全转换
+///   * 类型：`&str` -> `impl Iterator<Item = char>`
 pub trait IntoChars {
     /// 将自身转换为字符迭代器，获取自身所有权
     fn into_chars(self) -> impl Iterator<Item = char>;

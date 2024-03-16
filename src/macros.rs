@@ -508,27 +508,67 @@ macro_rules! push_str {
 
 /// 用于将「流式追加」捕捉转换成「固定返回值」
 /// * 🎯首次应用于「基于[`String::push_str`]动态追加产生字符串」与「直接返回字符串」的转换中
+///   * 📌【2024-03-16 18:05:48】因解析器中应用广泛，目前暂不移除该用法
 ///
-/// # Example
+/// # 示例
+///
+/// 默认用法：生成`String`
 ///
 /// ```rust
 /// use nar_dev_utils::catch_flow;
 ///
 /// fn append(out: &mut String) {
 ///     out.push_str("hello, ");
-///     out.push_str("world!");
 /// }
 ///
-/// let caught = catch_flow!(append;);
+/// fn append_with(out: &mut String, with: &str) {
+///     out.push_str(with);
+/// }
+///
+/// let caught = catch_flow!(append); // 默认用法：使用[`String::new`]生成一个新字串
+/// let caught = catch_flow!(caught => append_with; "world!"); // 将捕获结果再次传入，并附加参数
 /// assert_eq!(caught, "hello, world!");
+/// ```
+///
+/// 同样可用于非字符串变量：
+///
+/// ```rust
+/// use nar_dev_utils::catch_flow;
+///
+/// fn add_one(n: &mut usize) {
+///     *n += 1;
+/// }
+///
+/// let caught = catch_flow!(0 => add_one);
+/// assert_eq!(caught, 1);
 /// ```
 #[macro_export]
 macro_rules! catch_flow {
-    ( $($path:ident).+ ; $($arg:tt)* ) => {
+    // 原始语法：`(对象.方法; 其它参数)`
+    // * 📝现在直接转发到新实现
+    // * 📌
+    ( $($path:ident).+ $(; $($tail:tt)*)? ) => {
+        catch_flow!({String::new()} => {$($path).+} $(; $($tail)*)? )
+    };
+    // 原始语法の扩展：`(对象.方法; 其它参数)`
+    // * 📝现在直接转发到新实现
+    ( $value:expr => $($path:ident).+ $(; $($tail:tt)*)? ) => {
+        catch_flow!({$value} => {$($path).+} $(; $($tail)*)? )
+    };
+    // 新语法：`([ 对象 ] => [流式追加函数] ; 其它参数)`
+    ( { $($value:tt)+ } => { $($f:tt)+ } ; $($arg:tt)* ) => {
         {
-            let mut s = String::new();
-            $($path).+(&mut s, $($arg)*);
-            s
+            let mut target = $($value)+;
+            $($f)+ (&mut target, $($arg)*);
+            target
+        }
+    };
+    // 新语法简写：`([ 对象 ] => [流式追加函数] ; 其它参数)`
+    ( { $($value:tt)+ } => { $($f:tt)+ } ) => {
+        {
+            let mut target = $($value)+;
+            $($f)+ (&mut target);
+            target
         }
     };
 }
