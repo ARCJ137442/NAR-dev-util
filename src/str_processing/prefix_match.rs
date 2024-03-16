@@ -38,9 +38,7 @@ pub trait PrefixMatch<PrefixTerm> {
     fn match_prefix(&self, to_match: &str) -> Option<&PrefixTerm> {
         // * ↓非迭代器版本
         // for (prefix, term) in self.prefixes_and_items() {
-        //     if to_match.starts_with(prefix) {
-        //         return Some(term);
-        //     }
+        //     if_return! { to_match.starts_with(prefix) => Some(term) }
         // }
         // None
         // ✅迭代器版本

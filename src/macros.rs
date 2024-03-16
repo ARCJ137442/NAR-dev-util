@@ -848,3 +848,86 @@ macro_rules! f_parallel {
         $($f)* ($($arg),+)
     };
 }
+
+/// 简化「if 条件 {return 值;}」的控制流
+/// * 📄形式：`if_return![a == 1 => 2]` => `if a == 1 {return 2;}`
+///
+/// # Examples
+///
+/// ```rust
+/// use nar_dev_utils::if_return;
+/// fn starts_at(text: &str, prefix: &str) -> Option<usize> {
+///     // 截断式返回示例：多分支
+///     if_return! {
+///        prefix.is_empty() => Some(0)
+///        text.starts_with(prefix) => Some(0)
+///     }
+///
+///     let mut i = 0;
+///     let max_i = text.len() - prefix.len();
+///     while i <= max_i {
+///         // 截断式返回示例：单分支 | 三行变一行
+///         if_return! { prefix == &text[i..(i + prefix.len())] => Some(i) }
+///         i += 1;
+///     }
+///
+///     None
+/// }
+///
+/// assert_eq!(starts_at("hello", ""), Some(0));
+/// assert_eq!(starts_at("hello", "llo"), Some(2));
+/// assert_eq!(starts_at("hello", "help"), None);
+/// ```
+///
+/// ```rust
+/// use nar_dev_utils::if_return;
+/// fn raise_the_bar(num: usize, bar: &mut usize) {
+///     #![allow(clippy::unused_unit)]
+///     *bar = 0;
+///     // 截断式返回示例：隐式指定返回值（单元类型`()`）
+///     if_return! { num <= *bar }
+///     println!("{num} is greater than {bar}");
+///
+///     *bar = 1;
+///     // 截断式返回示例：上述「隐式返回」与此处「显式返回」等价
+///     if_return! { num <= *bar => () }
+///     println!("{num} is greater than {bar}");
+///     *bar = 2;
+/// }
+///
+/// let mut num = 0;
+/// let mut bar = 0;
+/// raise_the_bar(num, &mut bar);
+/// assert_eq!(bar, 0);
+///
+/// num = 1;
+/// raise_the_bar(num, &mut bar);
+/// assert_eq!(bar, 1);
+///
+/// num = 2;
+/// raise_the_bar(num, &mut bar);
+/// assert_eq!(bar, 2);
+/// ```
+#[macro_export]
+macro_rules! if_return {
+    // 特殊优化/单条：直接返回表达式
+    {
+        $condition:expr $(=> $return_value:expr)?
+    } => {
+        if $condition {
+            return $($return_value)?;
+        }
+    };
+    // 推广情况/多条：使用代码块分别包裹
+    // * 📝嵌套展开并非不可，只是「多对多」更复杂
+    //   * 【2024-03-16 21:55:22】目前更多要靠自己试
+    {
+        $($condition:expr $(=> $return_value:expr)?)*
+    } => {
+        $(
+            {if $condition {
+                return $($return_value)?;
+            }};
+        )*
+    };
+}

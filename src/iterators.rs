@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::catch_flow;
+use crate::{catch_flow, if_return};
 
 /// 函数式迭代器
 /// * 🎯最初用于「基于**闭包/函数指针**灵活定义迭代器」
@@ -425,17 +425,18 @@ where
     T: Clone + PartialEq,
     I: Iterator<Item = T>,
 {
-    /// 判断是否以`other_iter`的元素开头
+    /// 判断是否以`pattern`的元素开头
     /// * 🚩从「缓冲区头索引」开始：**优先使用缓冲区内元素**，比对完了再从「内部迭代器」中拿取元素
-    ///   * 最多可能新拿取`other_iter.count()`个元素（**比对者长度**）
+    ///   * 最多可能新拿取`pattern.count()`个元素（**比对者长度**）
     /// * 🎯用于在语法解析中实现「前缀匹配」
     /// * ⚠️会改变缓冲区，且不区分「因不匹配而『非前缀』」与「因迭代完而『非前缀』」
-    pub fn starts_with(&mut self, mut other_iter: impl Iterator<Item = T>) -> bool {
+    /// * 📌是`starts_with_at`的特殊情况，但做好了特化
+    pub fn starts_with(&mut self, mut pattern: impl Iterator<Item = T>) -> bool {
         // 先比对缓冲区中的元素（不会改变自身） | 此时「比对者」相对未知
         for item_self in &self.buffer {
             // ! ↑此处`item_self`不能加`&`，只需在需要比对时解引用
             // 从「比对者」中取出元素以对比
-            match other_iter.next() {
+            match pattern.next() {
                 // 在`false`之前就没有⇒返回`true`
                 None => return true,
                 // 比对失败⇒返回`false`
@@ -445,7 +446,7 @@ where
             }
         }
         // 再从自身拿出来比对 | 此时「自身」相对未知
-        for item_other in other_iter {
+        for item_other in pattern {
             // 从「内部迭代器」中取出元素，置入缓冲区
             match self.head_next() {
                 // 然后对比
@@ -454,9 +455,7 @@ where
                 // 迭代出元素⇒从缓冲区中取出元素，对齐，比对
                 Some(item_self) => {
                     // 比对失败⇒返回`false`
-                    if *item_self != item_other {
-                        return false;
-                    }
+                    if_return! { *item_self != item_other => false }
                 }
             }
         }
@@ -464,7 +463,7 @@ where
         true
     }
 
-    /// 判断从「『缓冲区头』后`buffer_offset`个索引处」开始是否以`other_iter`的元素开头
+    /// 判断从「『缓冲区头』后`buffer_offset`个索引处」开始是否以`pattern`的元素开头
     /// * ⚠️此处的`i`是相对坐标，0=>缓冲区头，以此类推
     /// * 🎯解析器进行「前缀匹配」不一定在缓冲区头部匹配
     /// * ⚠️【2024-03-16 17:20:11】目前要求子串必须有限
@@ -474,12 +473,12 @@ where
         buffer_offset: usize,
         pattern: impl Iterator<Item = T>,
     ) -> bool {
+        // 偏移为零⇒特化到`starts_with`
+        if_return! { buffer_offset == 0 => self.starts_with(pattern) }
         // 先构造子串的缓冲区迭代器
         let items = pattern.collect::<Vec<_>>();
         // 空字串⇒直接返回`true`
-        if items.is_empty() {
-            return true;
-        }
+        if_return! { items.is_empty() => true }
         let len_items = items.len();
         // 确保自身（偏移之后）长度足够，没有⇒返回`None`
         let expected_pattern_end_i = buffer_offset + len_items - 1;
@@ -488,16 +487,16 @@ where
             && self._starts_with_at_unchecked(buffer_offset, items.iter())
     }
 
-    /// 【内部】判断从「『缓冲区头』后`buffer_offset`个索引处」开始是否以`other_iter`的元素开头
+    /// 【内部】判断从「『缓冲区头』后`buffer_offset`个索引处」开始是否以`pattern`的元素开头
     /// * ⚠️不检查「自身是否有足够元素在缓冲区」
     /// * ⚠️【2024-03-16 17:20:11】目前要求子串必须有限
     ///   * 会进行collect
     fn _starts_with_at_unchecked<'a>(
         &'a mut self,
         buffer_offset: usize,
-        other_iter: impl Iterator<Item = &'a T>,
+        pattern: impl Iterator<Item = &'a T>,
     ) -> bool {
-        other_iter
+        pattern
             .enumerate()
             .all(|(pattern_i, item)| self.buffer_get(buffer_offset + pattern_i).unwrap() == item)
     }
@@ -513,9 +512,7 @@ where
         // 先构造子串的缓冲区迭代器
         let items = pattern.collect::<Vec<_>>();
         // 空字串⇒直接返回`Some(0)`
-        if items.is_empty() {
-            return Some(0);
-        }
+        if_return! { items.is_empty() => Some(0) }
         let len_items = items.len();
         // ! 📝【2024-03-16 16:41:47】迭代器`find`/`position`的方法行不通：闭包内重复借用
         // 然后开始匹配
@@ -538,16 +535,16 @@ where
         }
     }
 
-    /// 若以`other_iter`的元素开头⇒跳过元素
+    /// 若以`pattern`的元素开头⇒跳过元素
     /// * 🚩仍然会返回「是否 匹配+跳过 成功」
     /// * 📌虽然要求「比对者长度」已知，但「比对者长度」在[`Self::starts_with`]返回`true`时已蕴含「比对者长度已知」
     ///   * 🚩因此使用[`Iterator::map`]封装计数逻辑，并消耗迭代器
     /// * 🚩比对成功后，使用「缓冲区递进」[`Self::buffer_next`]跳过元素
     ///   * 📌因为是从缓冲区开始比对的
-    pub fn skip_when_starts_with(&mut self, other_iter: impl Iterator<Item = T>) -> bool {
+    pub fn skip_when_starts_with(&mut self, pattern: impl Iterator<Item = T>) -> bool {
         let mut c: usize = 0;
         // 使用闭包边迭代边计数（后续用于跳过比对者）
-        if self.starts_with(other_iter.map(|v| {
+        if self.starts_with(pattern.map(|v| {
             // 边迭代边计数
             c += 1;
             v
