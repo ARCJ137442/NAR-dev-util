@@ -1,7 +1,7 @@
 //! 与「前缀匹配」有关的工具结构与算法
 //! * 🎯最初用于字符串parser
 
-use crate::{binary_search, binary_search_by};
+use crate::{binary_search, binary_search_by, char_slice_has_prefix};
 
 /// 前缀匹配（抽象特征）
 /// * 🎯用于存储前缀，封装如下两个逻辑
@@ -44,6 +44,17 @@ pub trait PrefixMatch<PrefixTerm> {
         // ✅迭代器版本
         self.prefixes_terms()
             .find(|&term| to_match.starts_with(self.get_prefix_from_term(term)))
+    }
+    /// 开启前缀匹配（字符迭代器版本）
+    /// * 🎯封装「前缀匹配」逻辑，用于「字符迭代器」兼「字符数组切片」
+    ///   * ❌字符迭代器：暂时不需要 & 还是得转数组
+    /// * 🚩迭代、扫描、匹配
+    ///   * 1. 从一个字符串开始
+    ///   * 2. 然后扫描自身所有前缀（字串从长到短）
+    ///   * 3. 最后（若成功）返回匹配到的前缀所对应的「前缀条目」
+    fn match_prefix_char_slice(&self, to_match: &[char]) -> Option<&PrefixTerm> {
+        self.prefixes_terms()
+            .find(|&term| char_slice_has_prefix(to_match, self.get_prefix_from_term(term)))
     }
 }
 

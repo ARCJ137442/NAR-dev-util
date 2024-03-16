@@ -10,3 +10,7 @@ pub use join::*;
 mod prefix_match;
 #[cfg(feature = "algorithms")]
 pub use prefix_match::*;
+
+// 字符数组切片
+mod char_slices;
+pub use char_slices::*;
