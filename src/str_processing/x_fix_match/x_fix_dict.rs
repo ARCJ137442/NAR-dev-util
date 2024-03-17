@@ -30,6 +30,11 @@ pub type PrefixMatchDict = XFixMatchDict;
 #[doc(alias = "XFixMatchDict")]
 pub type SuffixMatchDict = XFixMatchDict;
 
+/// 原「双向匹配字典」
+/// * 🚩现在统一并入「词缀匹配字典」
+#[doc(alias = "XFixMatchDict")]
+pub type BiFixMatchDict = XFixMatchDict;
+
 impl PrefixMatchDict {
     /// 构造函数
     /// * 支持从任何「元素为『可转换为字符串』的可迭代对象」中转换
