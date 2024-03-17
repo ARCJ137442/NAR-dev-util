@@ -170,7 +170,7 @@ macro_rules! bi_fix_match_dict_pair {
     };
     // 统一的表 | 自面量也是一种表达式
     [$($bi_fix:expr => $item:expr $(,)?)*] => {{
-        let mut d = BiFixMatchDictPair::default();
+        let mut d = $crate::BiFixMatchDictPair::default();
         $(
             d.insert((
                 bi_fix_match_dict_pair!(@value $bi_fix),

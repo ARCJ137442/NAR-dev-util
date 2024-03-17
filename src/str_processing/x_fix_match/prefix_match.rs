@@ -47,8 +47,8 @@ macro_rules! prefix_match_dict_pair {
         let mut d = $crate::PrefixMatchDictPair::default();
         $(
             d.insert((
-                prefix_match_dict_pair!(@value $prefix),
-                prefix_match_dict_pair!(@value $item),
+                $crate::prefix_match_dict_pair!(@value $prefix),
+                $crate::prefix_match_dict_pair!(@value $item),
             ));
         )*
         d
