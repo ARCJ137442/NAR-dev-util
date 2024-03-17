@@ -948,3 +948,17 @@ mod tests {
         }
     }
 }
+
+// ! ❌【2024-03-17 15:52:37】无法实现迭代器新方法「批量解引用」
+// * 🎯最初用于「返回双重引用的迭代器→返回单重引用的迭代器」
+// ! cannot move out of dereference of `T`
+// ! move occurs because value has type `DerefT`, which does not implement the `Copy`
+// pub trait MapDeref<T, DerefT>
+// where
+//     Self: Iterator<Item = T> + Sized,
+//     T: std::ops::Deref<Target = DerefT>,
+// {
+//     fn map_deref(self) -> impl Iterator<Item = DerefT> {
+//         self.map(|refed_t| *refed_t)
+//     }
+// }

@@ -1,1 +1,5 @@
+# 编译目标
 /target
+
+# 扩展「Code Runner」的临时文件
+*tempCodeRunner*
