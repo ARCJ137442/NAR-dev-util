@@ -130,7 +130,8 @@ macro_rules! x_fix_match_dict {
 }
 
 /// 兼容性重定向「前缀匹配字典」
-#[macro_export]
+/// * 📝使用修饰属性`local_inner_macros`一并导出里边用到的宏
+#[macro_export(local_inner_macros)]
 macro_rules! prefix_match_dict {
     ( $($anything:tt)* ) => {
         $crate::x_fix_match_dict!($($anything)*)
@@ -138,7 +139,8 @@ macro_rules! prefix_match_dict {
 }
 
 /// 兼容性重定向「后缀匹配字典」
-#[macro_export]
+/// * 📝使用修饰属性`local_inner_macros`一并导出里边用到的宏
+#[macro_export(local_inner_macros)]
 macro_rules! suffix_match_dict {
     ( $($anything:tt)* ) => {
         $crate::x_fix_match_dict!($($anything)*)
@@ -185,7 +187,6 @@ mod tests {
     use crate::{asserts, show};
 
     /// 实用宏 @ 用于生成「批量词缀匹配」
-    /// * ⚠️目前只能用于
     #[macro_export] // ! 虽然导出了，但因为`#[cfg(test)]`还是不会污染全局环境
     macro_rules! test_match_x_fix {
         {
@@ -204,7 +205,8 @@ mod tests {
     }
 
     /// 实用宏 @ 批量测试前缀匹配
-    #[macro_export]
+    /// * 📝使用修饰属性`local_inner_macros`一并导出里边用到的宏
+    #[macro_export(local_inner_macros)]
     macro_rules! test_match_prefix {
         {
             $($other:tt)*
@@ -221,7 +223,8 @@ mod tests {
     }
 
     // 实用宏 @ 批量测试后缀匹配
-    #[macro_export]
+    /// * 📝使用修饰属性`local_inner_macros`一并导出里边用到的宏
+    #[macro_export(local_inner_macros)]
     macro_rules! test_match_suffix {
         {
             $($other:tt)*

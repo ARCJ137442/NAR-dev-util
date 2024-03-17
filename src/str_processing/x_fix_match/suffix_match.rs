@@ -7,6 +7,7 @@
 //!   * 💭虽说要同时维护，但情况较少
 
 use super::traits::*;
+use crate::search_by;
 
 /// 「后缀条目」
 /// * 🎯统一表达`(关联内容, 后缀)`的二元组
@@ -152,7 +153,7 @@ impl<T> SuffixMatchDictPair<T> {
     /// * ⚠️因涉及「内部数组」所以【无法提取至通用特征】
     #[inline(always)]
     pub fn search(&self, suffix: &SuffixStr) -> Result<usize, usize> {
-        super::search_by(&self.suffixes, &suffix, |suffix, existed| {
+        search_by(&self.suffixes, &suffix, |suffix, existed| {
             // ! ⚠️不要在此添加`.reverse()`：限定在`cmp之内解决
             // * 📌保证插入后「比自己大的 > 自己 > 已存在」
             Self::cmp_suffix(existed, suffix) // ←由二分查找的「从小到大」逆转为「从大到小」

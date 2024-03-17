@@ -3,8 +3,8 @@
 //!   * ℹ️此时括弧一般都两两不重复
 //! * ✨可由前缀搜后缀，亦可后缀搜前缀
 
-use super::{search_by, traits::*};
-use crate::{PrefixMatchDictPair, SuffixMatchDictPair};
+use super::traits::*;
+use crate::{search_by, PrefixMatchDictPair, SuffixMatchDictPair};
 
 /// 「双向配对条目」
 /// * 🎯实际就是`(前缀, 后缀)`的简写

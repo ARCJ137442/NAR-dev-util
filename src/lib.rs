@@ -5,6 +5,10 @@
 // 实用宏 // ! 默认启用
 mod macros;
 
+// 预引入 // ! 默认启用
+mod prelude;
+pub use prelude::*;
+
 // 浮点
 #[cfg(feature = "floats")]
 mod floats;
@@ -28,3 +32,9 @@ pub use iterators::*;
 mod algorithms;
 #[cfg(feature = "algorithms")]
 pub use algorithms::*;
+
+// 数组
+#[cfg(feature = "arrays")]
+mod arrays;
+#[cfg(feature = "arrays")]
+pub use arrays::*;

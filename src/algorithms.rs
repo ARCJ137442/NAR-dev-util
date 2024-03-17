@@ -1,8 +1,20 @@
-/// 存储一些常用的辅助算法
-/// * 🎯不依赖标准库
+//! 存储一些常用的辅助算法
+//! * 🎯不依赖外部库
+use crate::if_return;
 use std::cmp::{Ord, Ordering};
 
-use crate::if_return;
+// /// 查找「对Ord选择算法」
+// #[inline(always)]
+// pub fn search_for_ord<T, Search, Cmp>(search: Search, arr: &[T], target: &T) -> Result<usize, usize>
+// where
+//     T: Ord,
+//     Search: Fn(&[T], &T, Cmp) -> Result<usize, usize>,
+//     Cmp: Fn(&T, &T) -> Ordering,
+// {
+//     search(arr, target, T::cmp) // ! 不能直接传入函数指针：类型不匹配
+//     // search(arr, target, |target: &T, existed: &T| target.cmp(existed)) // ! 不能直接传入闭包：类型仍然不匹配
+//     ; // * 【2024-03-17 21:24:53】❌结论：放弃
+// }
 
 /// 二分查找
 /// * 🎯用于对某个**已排好序**的元素的查找
@@ -30,9 +42,9 @@ where
 ///   * 或「第一个大于该元素」的位置
 /// * 🚩【2024-03-15 16:42:44】泛化：将「有序大小判断」封装到函数`cmp`中
 ///   * ✨这样不再需要约束「数组元素」「目标」的类型
-pub fn binary_search_by<T1, T2, F>(arr: &[T1], target: &T2, cmp: F) -> Result<usize, usize>
+pub fn binary_search_by<T1, T2, Cmp>(arr: &[T1], target: &T2, cmp: Cmp) -> Result<usize, usize>
 where
-    F: Fn(&T2, &T1) -> Ordering,
+    Cmp: Fn(&T2, &T1) -> Ordering,
 {
     // 考虑「长度为零」的特殊情况：直接返回「应该插入第一个」
     if_return! { arr.is_empty() => Err(0) }
@@ -66,124 +78,12 @@ where
 /// 单元测试
 #[cfg(test)]
 mod tests {
-
-    use std::fmt::Debug;
-
     use super::*;
-
-    /// 单测/二分查找/整数分派
-    fn _test_binary_search_usize(arr: &mut [usize]) {
-        _test_binary_search(arr, *arr.first().unwrap()..*arr.last().unwrap());
-    }
-    fn _test_binary_search_isize(arr: &mut [isize]) {
-        _test_binary_search(arr, *arr.first().unwrap()..*arr.last().unwrap());
-    }
-    fn _test_binary_search_char(arr: &mut [char]) {
-        _test_binary_search(arr, *arr.first().unwrap()..*arr.last().unwrap());
-    }
-
-    /// 单测/二分查找/通用
-    fn _test_binary_search<T>(arr: &mut [T], boarder_range: impl IntoIterator<Item = T>)
-    where
-        T: Ord + Debug,
-    {
-        // 先排序
-        arr.sort();
-        // 成功查找
-        for (i, target) in arr.iter().enumerate() {
-            let res = binary_search(arr, target);
-            // ! 不能使用「找到⇒找到的索引==当前位置索引」的假设：有可能会有重复的元素
-            assert!(
-                // 相对地，使用「找到的元素一样」
-                arr[res.unwrap()] == arr[i],
-                "Error on target={target:?} and res={res:?}"
-            );
-        }
-        // 遍历查找
-        for target in boarder_range {
-            // 默认结果「是否有」
-            let found = arr.iter().any(|item| *item == target);
-            // 算法结果
-            let res = binary_search(arr, &target);
-            // 判断结果是否一致
-            assert_eq!(res.is_ok(), found);
-            // 当查找失败时
-            if !found {
-                // 验证结果：是否的确是插入「第一个大于等于该元素」的位置
-                // ! ⚠️↓这实际上就类似`index_of`
-                // let first_greater_i = arr.iter().position(|&item| item >= target).unwrap();
-                // show!(target, found, res, first_greater_i;);
-                let should_insert_to = res.unwrap_err();
-                // ! ⚠️有可能在边界外
-                assert!(should_insert_to >= arr.len() || arr[should_insert_to] >= target);
-            }
-        }
-        // 输出结果信息
-        print!("test succeed on ");
-        match arr.len() {
-            0..=1000 => println!("{arr:?}"),
-            l => println!(
-                "[{:?}, {:?}, ..., {:?}; {l}]",
-                arr[0],
-                arr[1],
-                arr.last().unwrap()
-            ),
-        }
-    }
+    use crate::{prelude::tests::__test_search, test_search};
 
     /// 单测/二分查找
     #[test]
     fn test_binary_search() {
-        // 构造并测试数组 //
-        // 简单数组
-        _test_binary_search_usize(&mut [2, 4, 6, 7, 8]);
-        _test_binary_search_usize(&mut [1, 3, 5, 7, 9]);
-        _test_binary_search_usize(&mut [0, 0, 0, 0, 0]); // 重复元素
-        _test_binary_search_usize(&mut std::array::from_fn::<_, 100, _>(|i| i * i));
-        // _test_binary_search_usize(&mut (0..10000).map(|x| 2 * x).collect::<Vec<_>>());
-        for gap in 1..=100 {
-            _test_binary_search_usize(&mut (0..10000).filter(|x| x % gap == 0).collect::<Vec<_>>());
-        }
-
-        // 涉及负数 | ⚠️注意：直接对数组切片调用sort无效
-        _test_binary_search_isize(&mut [-2, -4, -6, -7, -8]);
-        _test_binary_search_isize(&mut [-1, -3, -5, -7, -9]);
-        _test_binary_search_isize(&mut [0, -0, 0, -0, 0]); // 重复元素
-        _test_binary_search_isize(
-            &mut (0..10000)
-                .map(|x| if x & 1 == 0 { x } else { -x })
-                .collect::<Vec<_>>(),
-        );
-
-        // 其它可比类型 | 字符
-        _test_binary_search_char(&mut ['a', 'b', 'f', '你', '好', '😋', '✨']); // 重复元素
-        _test_binary_search_char(&mut "我们有权报复三体文明".chars().collect::<Vec<_>>()); // 重复元素
-        _test_binary_search_char(&mut ('\x00'..'\u{00ff}').collect::<Vec<_>>());
-
-        // 其它可比类型 | 字符串
-        let mut strings = "\
-        Self {
-            prefixes: prefixes
-                .into_iter()
-                .map(|into_s| into_s.into())
-                .collect::<Vec<String>>(),
-        }"
-        .split_whitespace()
-        .collect::<Vec<_>>();
-        let strings_more =
-            "pub fn new(prefixes: impl IntoIterator<Item = impl Into<String>>) -> Self {
-            // ? 或许也可以「先新建空值，然后逐个添加」来实现，复杂度 ∑ 1 log 1 ~ n log n
-            Self {
-                prefixes: prefixes
-                    .into_iter()
-                    .map(|into_s| into_s.into())
-                    .collect::<Vec<String>>(),
-            }
-        }"
-            .split_whitespace()
-            .collect::<Vec<_>>();
-        _test_binary_search(&mut strings, strings_more);
-
-        // 规则数组
+        test_search!(binary_search);
     }
 }

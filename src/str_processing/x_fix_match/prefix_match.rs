@@ -4,6 +4,7 @@
 //! * 📌【2024-03-17 14:18:01】现在从「后缀匹配」子模块迁移而来
 
 use super::traits::*;
+use crate::search_by;
 
 /// 「前缀条目」
 /// * 🎯统一表达`(关联内容, 前缀)`的二元组
@@ -157,7 +158,7 @@ impl<T> PrefixMatchDictPair<T> {
     /// * ⚠️因涉及「内部数组」所以【无法提取至通用特征】
     #[inline(always)]
     pub fn search(&self, prefix: &PrefixStr) -> Result<usize, usize> {
-        super::search_by(&self.prefixes, &prefix, |prefix, existed| {
+        search_by(&self.prefixes, &prefix, |prefix, existed| {
             // ! ⚠️不要在此添加`.reverse()`：限定在`cmp之内解决
             // * 📌保证插入后「比自己大的 > 自己 > 已存在」
             Self::cmp_prefix(existed, prefix)
