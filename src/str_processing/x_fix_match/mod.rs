@@ -7,6 +7,9 @@
 //!   * 📌前缀匹配左括弧，映射到「右括弧」 ⇒ [`PrefixMatchDict`]
 //!   * 📌后缀匹配右括弧，映射到「左括弧」 ⇒ [`SuffixMatchDict`]
 //!   * 📌前缀匹配左括弧⇄后缀匹配右括弧 ⇒ [`BiFixMatchDict`]
+//!
+//! ! ⚠️此处无法使用[`crate::mod_and_reexport`]宏
+//! * 📌原因：内部导出了宏
 
 // 抽象特征
 mod traits;

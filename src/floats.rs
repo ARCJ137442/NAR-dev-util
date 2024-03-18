@@ -1,19 +1,4 @@
-/// 统一指定「精度」类型
-/// * 🎯真值
-/// * 🎯预算值
-/// * 💫难点：无法通过泛型处理形如 `f32 | f64` 的类型标注
-///   * 🕚时间：【2024-02-19 22:42:18】
-///   * ❌无法处理「类型比对」的操作（f32无法和f64比对，反之亦然，不兼容）
-///   * ❌无法使用「统一特征」的方式
-///     * 🚩方法代码：`trait Float{}; impl Float for f32 {}; impl Float for f64 {};`
-///   * ❌无法处理「构造传参」中有关的「常量转换操作」
-///     * ❗类似`new_single(1.0)`，此中之常量无法转换为「精度」对象
-///     * ❌无法使用`as`：无法限制`Precision`为基础类型
-///     * ❌无法使用`From<f64>`的方法：[`f32`]未实现[`From<f64>`]特征，反之亦然
-pub type FloatPrecision = f64;
-/// 默认的整数精度
-/// * 🎯时间戳/固定时间 | OpenNARS/PyNARS均支持「负整数时间」
-pub type IntPrecision = isize;
+//! 与「浮点处理」有关的实用工具
 
 /// 「0-1」实数
 /// 📌通过特征为浮点数添加「0-1 限制」方法
@@ -27,18 +12,29 @@ pub trait ZeroOneFloat {
     fn validate_01(self) -> Self;
 }
 
-/// 实现
-impl ZeroOneFloat for FloatPrecision {
-    fn is_in_01(&self) -> bool {
-        *self >= 0.0 && *self <= 1.0
-    }
-    fn validate_01(self) -> Self {
-        // * 📝Clippy：可以使用「区间包含」而非「条件组合」
-        if !(0.0..=1.0).contains(&self) {
-            panic!("「0-1」区间外的值（建议：`0<x<1`）");
+/// 批量实现「0-1」实数
+/// * 🚩【2024-03-18 21:32:40】现在使用**宏**而非依赖「默认精度」超参数
+/// * 📌减少重复代码，即便实际上只需实现两个类型
+macro_rules! impl_zero_one_float {
+    ($($t:tt)*) => {$(
+        /// 实现
+        impl ZeroOneFloat for $t {
+            fn is_in_01(&self) -> bool {
+                *self >= 0.0 && *self <= 1.0
+            }
+            fn validate_01(self) -> Self {
+                // * 📝Clippy：可以使用「区间包含」而非「条件组合」
+                if !(0.0..=1.0).contains(&self) {
+                    panic!("「0-1」区间外的值（建议：`0<x<1`）");
+                }
+                self
+            }
         }
-        self
-    }
+    )*};
+}
+impl_zero_one_float! {
+    f32
+    f64
 }
 
 /// 单元测试/「0-1」实数

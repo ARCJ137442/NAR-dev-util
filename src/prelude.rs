@@ -52,7 +52,7 @@ where
     F: Fn(&Target, &T) -> Ordering,
 {
     // 重定向到「二分查找」
-    crate::algorithms::binary_search_by(arr, target, cmp)
+    crate::vec_tools::search::binary_search_by(arr, target, cmp)
 }
 
 /// 搜索 | 使用线性查找

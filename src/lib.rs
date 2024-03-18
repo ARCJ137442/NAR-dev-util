@@ -9,32 +9,29 @@ mod macros;
 mod prelude;
 pub use prelude::*;
 
-// 浮点
-#[cfg(feature = "floats")]
-mod floats;
-#[cfg(feature = "floats")]
-pub use floats::*;
+// 特性 => 模块 | 依靠特性导入并重新导出模块 //
+// ! ⚠️【2024-03-18 21:44:47】已知问题：无法兼容「导出了宏的模块」
+// ! 🔗参考：<https://github.com/rust-lang/rust/pull/52234>
+feature_pub_mod_and_reexport! {
+    // 浮点
+    "floats" => floats
 
-// 字符串处理
+    // 字符串处理
+    // "str_processing" => str_processing
+    // ! ❌【2024-03-18 21:44:08】该模块有导出宏，故不启用
+
+    // 迭代器
+    "iterators" => iterators
+
+    // Vec工具
+    "vec_tools" => vec_tools
+
+    // 字符串⇒字符迭代器 | IntoChars
+    "into_chars" => into_chars
+}
+
+// 其它模块 //
 #[cfg(feature = "str_processing")]
 mod str_processing;
 #[cfg(feature = "str_processing")]
 pub use str_processing::*;
-
-// 迭代器
-#[cfg(feature = "iterators")]
-mod iterators;
-#[cfg(feature = "iterators")]
-pub use iterators::*;
-
-// 算法
-#[cfg(feature = "algorithms")]
-mod algorithms;
-#[cfg(feature = "algorithms")]
-pub use algorithms::*;
-
-// 数组
-#[cfg(feature = "arrays")]
-mod arrays;
-#[cfg(feature = "arrays")]
-pub use arrays::*;
