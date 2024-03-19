@@ -1,7 +1,7 @@
 //! 与各种字符串处理相关
 
 // 导入并公开导出所有 //
-crate::pub_mod_and_reexport! {
+crate::pub_mod_and_pub_use! {
     // join
     join
     // 字符数组切片

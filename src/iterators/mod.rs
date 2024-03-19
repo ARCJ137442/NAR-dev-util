@@ -6,7 +6,7 @@
 //!   * 迭代结果基于一个函数/闭包
 
 // 导入并公开导出所有 //
-crate::pub_mod_and_reexport! {
+crate::pub_mod_and_pub_use! {
     // 广度优先遍历
     bfs
     // 函数式迭代器

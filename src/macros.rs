@@ -974,11 +974,26 @@ macro_rules! feature_pub_mod_and_reexport {
 ///   * 🔗问题参考：<https://github.com/rust-lang/rust/pull/52234>
 /// * 🚩【2024-03-18 22:04:24】出于对调用者的考虑，此处对模块及其符号都选择「公开导出」
 #[macro_export]
-macro_rules! pub_mod_and_reexport {
-    // 默认 | 不导出内部模块
+macro_rules! pub_mod_and_pub_use {
+    // 默认
     { $( $mod_name:ident )* } => {
         $(
             pub mod $mod_name; // ! 公开
+            pub use $mod_name::*; // ! 公开
+        )*
+    };
+}
+
+/// 批量封装：导入并重新导出模块
+/// * 🎯用于简化重复的`mod`、`pub use`逻辑
+/// * ⚠️已知问题：**无法以此覆盖【内部导出了宏】的模块**
+///   * 📄参考：[`pub_mod_and_reexport`]
+#[macro_export]
+macro_rules! mod_and_pub_use {
+    // 默认
+    { $( $mod_name:ident )* } => {
+        $(
+            mod $mod_name; // ! 不公开
             pub use $mod_name::*; // ! 公开
         )*
     };
