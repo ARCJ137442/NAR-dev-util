@@ -11,6 +11,10 @@
 //! ! ⚠️此处无法使用[`crate::mod_and_reexport`]宏
 //! * 📌原因：内部导出了宏
 
+// 标准库增强
+mod std_boost;
+pub use std_boost::*;
+
 // 抽象特征
 mod traits;
 pub use traits::*;
