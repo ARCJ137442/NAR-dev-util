@@ -2,12 +2,25 @@
 //! * 🎯尤其对「从其它地方接收到一个不同类型的Result，需要转换成另一种Result并返回」的场景有用
 //! * 📄`Result<T, E1>` --> `Result<T, E2>` --> `?`
 
+use std::convert::identity;
+
 /// 用于为一般的[`Result`]添加功能
 /// * 🎯用于`Result<T, E>`
 pub trait ResultTransform<T, E> {
+    /// 使用两个「转换器」函数，将[`Result`]的[`Ok`]和[`Err`]分别做映射
+    /// * 🎯用于简化`Ok(..) => Ok(..), Err(..) => Err(..)`的情形
+    /// * 📝【2024-03-20 21:50:44】此处使用[`FnMut`]以便允许在闭包中修改包外变量
+    fn transform<T2, Error2>(
+        self,
+        transformer_ok: impl FnMut(T) -> T2,
+        transformer_err: impl FnMut(E) -> Error2,
+    ) -> Result<T2, Error2>;
+
     /// 使用一个「转换器」函数，将内容相同的[`Result`]的错误转换成另一种错误
     /// * 🎯用于「从其它地方调用方法返回不同类型的错误，但调用处希望仍然能使用`?`上抛」的情况
-    fn transform_err<Error2>(self, transformer: impl Fn(E) -> Error2) -> Result<T, Error2>;
+    /// * 📌亦可使用[`transform`] + [`core::convert::identity`]
+    ///   * ❌【2024-03-20 21:45:25】此处不提供默认实现：consider further restricting `Self`: ` where Self: std::marker::Sized`
+    fn transform_err<Error2>(self, transformer: impl FnMut(E) -> Error2) -> Result<T, Error2>;
 
     /// 调转[`Ok`]与[`Err`]的类型
     /// * 🎯从`Result<T, E>`调转成`Result<E, T>`
@@ -24,11 +37,20 @@ pub trait ResultTransformSingular<TorE> {
 }
 
 impl<T, E> ResultTransform<T, E> for Result<T, E> {
+    #[inline(always)]
+    fn transform_err<Error2>(self, transformer: impl FnMut(E) -> Error2) -> Result<T, Error2> {
+        self.transform(identity, transformer)
+    }
+
     #[inline]
-    fn transform_err<Error2>(self, transformer: impl Fn(E) -> Error2) -> Result<T, Error2> {
+    fn transform<T2, Error2>(
+        self,
+        mut transformer_ok: impl FnMut(T) -> T2,
+        mut transformer_err: impl FnMut(E) -> Error2,
+    ) -> Result<T2, Error2> {
         match self {
-            Err(old_error) => Err(transformer(old_error)),
-            Ok(v) => Ok(v),
+            Ok(ok) => Ok(transformer_ok(ok)),
+            Err(err) => Err(transformer_err(err)),
         }
     }
 
