@@ -1,6 +1,6 @@
 [package]
 name = "nar_dev_utils"
-version = "0.10.1"
+version = "0.11.0"
 description = "用于NARS相关项目开发的实用工具包"
 authors = ["Argon (ARCJ137442)"]
 edition = "2021"
@@ -15,7 +15,14 @@ edition = "2021"
 default = []
 
 # 包含除「实用宏」外的所有特性
-bundled = ["floats", "iterators", "str_processing", "vec_tools", "into_chars"]
+bundled = [
+    "floats",
+    "iterators",
+    "str_processing",
+    "vec_tools",
+    "into_chars",
+    "result_transform",
+]
 
 # * 下面是所有实用功能，一个模块对应同名的一个特性 * #
 floats = []
@@ -23,3 +30,4 @@ iterators = []
 str_processing = []
 vec_tools = []
 into_chars = []
+result_transform = []
