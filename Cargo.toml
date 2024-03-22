@@ -1,6 +1,6 @@
 [package]
 name = "nar_dev_utils"
-version = "0.12.0"
+version = "0.13.0"
 description = "用于NARS相关项目开发的实用工具包"
 authors = ["Argon (ARCJ137442)"]
 edition = "2021"
@@ -21,7 +21,7 @@ bundled = [
     "str_processing",
     "vec_tools",
     "into_chars",
-    "result_transform",
+    "opt_res_boost",
 ]
 
 # * 下面是所有实用功能，一个模块对应同名的一个特性 * #
@@ -30,4 +30,4 @@ iterators = []
 str_processing = []
 vec_tools = []
 into_chars = []
-result_transform = []
+opt_res_boost = []

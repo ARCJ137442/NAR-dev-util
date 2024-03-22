@@ -1,7 +1,29 @@
 //! 辅助各种「字符串join」的方法
 //! * 🎯用于各种定制的字符串join方式
 
-use crate::push_str;
+use crate::{push_str, AsStrRef};
+
+/// 拼接字串到指定目标
+/// * 🎯将字符串集中拼接到一个「目标字串」中，中途不创建任何辅助字符串
+/// * 🎯用于替代【会创建[`String`]对象】的[`std::slice::Join::join`]方法
+///   * ✨在对其它字串使用类似`join`的方式添加数组元素时，享受**零对象创建**的性能提升
+/// * 📝对于兼容[`String`]和[`str`]两种类型
+/// * 📝相当于对上边[`AsStrRef`]的展示
+///
+/// ! [`std::slice::Join`]特征不稳定，参见<https://github.com/rust-lang/rust/issues/27747>
+pub fn join_to(out: &mut String, sep: impl AsStrRef, iter: impl Iterator<Item = impl AsStrRef>) {
+    // 简单的`join实现
+    let mut is_first = true;
+    for s in iter {
+        // 添加分隔符
+        match is_first {
+            true => is_first = false,
+            false => out.push_str(sep.as_str_ref()),
+        }
+        // 添加元素
+        out.push_str(s.as_str_ref());
+    }
+}
 
 /// 工具函数/有内容时前缀分隔符
 /// * 🎯最初用于「多个用空格分隔的条目」中「若其中有空字串，就无需连续空格」的情况
@@ -9,14 +31,14 @@ use crate::push_str;
 pub fn add_space_if_necessary_and_flush_buffer(
     out: &mut String,
     buffer: &mut String,
-    separator: &str,
+    separator: impl AsStrRef,
 ) {
     match buffer.is_empty() {
         // 空⇒不做动作
         true => {}
         // 非空⇒预置分隔符，推送并清空
         false => {
-            push_str!(out; separator, buffer);
+            push_str!(out; separator.as_str_ref(), buffer);
             buffer.clear();
         }
     }
@@ -33,24 +55,88 @@ pub fn add_space_if_necessary_and_flush_buffer(
 /// join_lest_multiple_separators(&mut s, vec!["a", "", "b", "c", "", "d"].into_iter(), ",");
 /// assert_eq!(s, "a,b,c,d");
 /// ```
-pub fn join_lest_multiple_separators<'a, I>(out: &mut String, mut elements: I, separator: &str)
-where
-    I: Iterator<Item = &'a str>,
+pub fn join_lest_multiple_separators<S>(
+    out: &mut String,
+    mut elements: impl Iterator<Item = S>,
+    separator: impl AsStrRef,
+) where
+    S: AsStrRef,
 {
     // 先加入第一个元素
     match elements.next() {
         // 有元素⇒直接加入
-        Some(s) => out.push_str(s),
+        Some(s) => out.push_str(s.as_str_ref()),
         // 无元素⇒直接返回
         None => return,
     };
     // 其后「先考虑分隔，再添加元素」
     for element in elements {
-        match element.is_empty() {
+        match element.as_str_ref().is_empty() {
             // 空字串⇒没必要添加
             true => continue,
             // 非空字串⇒连同分隔符一并添加
-            false => push_str!(out; separator, element),
+            false => push_str!(out; separator.as_str_ref(), element.as_str_ref()),
+        }
+    }
+}
+
+/// 单元测试
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{asserts, catch_flow};
+
+    #[test]
+    fn test_join_to() {
+        asserts! {
+            catch_flow!(join_to; ",", ["a", "b", "c"].iter()) => "a,b,c"
+            catch_flow!(
+                join_to;
+                String::from(","),
+                [
+                    String::from("a"),
+                    String::from("b"),
+                    String::from("c"),
+                ].iter()
+            ) => "a,b,c"
+        }
+    }
+
+    #[test]
+    fn test_add_space_if_necessary_and_flush_buffer() {
+        asserts! {
+            // 缓冲区有元素⇒加上分隔符
+            {
+                let mut s = String::from("A");
+                let mut buffer = String::from("B");
+                add_space_if_necessary_and_flush_buffer(&mut s, &mut buffer, ",");
+                (s, buffer)
+            } => ("A,B".into(), "".into())
+            // 缓冲区没元素⇒不加分隔符
+            {
+                let mut s = String::from("A");
+                let mut buffer = String::from("");
+                add_space_if_necessary_and_flush_buffer(&mut s, &mut buffer, ",");
+                (s, buffer)
+            } => ("A".into(), "".into())
+        }
+    }
+
+    #[test]
+    fn test_join_lest_multiple_separators() {
+        asserts! {
+            // 几个都有的情况
+            catch_flow!(
+                join_lest_multiple_separators;
+                ["A", "B", "C"].iter(),
+                ", "
+            ) => "A, B, C"
+            // 有些没有的情况
+            catch_flow!(
+                join_lest_multiple_separators;
+                ["A", "B", "", "C"].iter(),
+                ", "
+            ) => "A, B, C"
         }
     }
 }

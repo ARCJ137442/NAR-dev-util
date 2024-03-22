@@ -29,8 +29,8 @@ feature_pub_mod_and_reexport! {
     // 字符串⇒字符迭代器 | IntoChars
     "into_chars" => into_chars
 
-    // [`Result`]转换
-    "result_transform" => result_transform
+    // [`Option`][`Result`]增强
+    "opt_res_boost" => opt_res_boost
 }
 
 // 其它模块 //

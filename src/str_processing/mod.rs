@@ -2,6 +2,8 @@
 
 // 导入并公开导出所有 //
 crate::pub_mod_and_pub_use! {
+    // as_str_ref
+    as_str_ref
     // join
     join
     // 字符数组切片
