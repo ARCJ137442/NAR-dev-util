@@ -11,7 +11,7 @@ use crate::{push_str, AsStrRef};
 /// * 📝相当于对上边[`AsStrRef`]的展示
 ///
 /// ! [`std::slice::Join`]特征不稳定，参见<https://github.com/rust-lang/rust/issues/27747>
-pub fn join_to(out: &mut String, sep: impl AsStrRef, iter: impl Iterator<Item = impl AsStrRef>) {
+pub fn join_to(out: &mut String, iter: impl Iterator<Item = impl AsStrRef>, sep: impl AsStrRef) {
     // 简单的`join实现
     let mut is_first = true;
     for s in iter {
@@ -19,6 +19,37 @@ pub fn join_to(out: &mut String, sep: impl AsStrRef, iter: impl Iterator<Item = 
         match is_first {
             true => is_first = false,
             false => out.push_str(sep.as_str_ref()),
+        }
+        // 添加元素
+        out.push_str(s.as_str_ref());
+    }
+}
+
+/// 拼接字串到指定目标，但在每次添加时添加多个分隔符
+/// * 🎯将字符串集中拼接到一个「目标字串」中，中途不创建任何辅助字符串
+/// * 🎯用于「一个条目-多个分隔符-另一个条目」
+///   * 📄如：持有","和" "，需要依次添加，但又不想创建`String::from(", ")`的时候
+///   * ✨在对其它字串使用类似`join`的方式添加数组元素时，享受**零对象创建**的性能提升
+/// * 📝对于兼容[`String`]和[`str`]两种类型
+/// * 📝相当于对上边[`AsStrRef`]的展示
+///
+/// ! [`std::slice::Join`]特征不稳定，参见<https://github.com/rust-lang/rust/issues/27747>
+pub fn join_to_multi(
+    out: &mut String,
+    iter: impl Iterator<Item = impl AsStrRef>,
+    separators: &[impl AsStrRef],
+) {
+    // 简单的`join实现
+    let mut is_first = true;
+    for s in iter {
+        // 添加分隔符
+        match is_first {
+            true => is_first = false,
+            false => {
+                for sep in separators {
+                    push_str!(out; sep.as_str_ref());
+                }
+            }
         }
         // 添加元素
         out.push_str(s.as_str_ref());
@@ -89,16 +120,21 @@ mod tests {
     #[test]
     fn test_join_to() {
         asserts! {
-            catch_flow!(join_to; ",", ["a", "b", "c"].iter()) => "a,b,c"
+            // 静态字串
+            catch_flow!(join_to; ["a", "b", "c"].iter(), ",") => "a,b,c"
+            // 动态字串
             catch_flow!(
                 join_to;
-                String::from(","),
                 [
                     String::from("a"),
                     String::from("b"),
                     String::from("c"),
-                ].iter()
+                    ].iter(),
+                    String::from(","),
             ) => "a,b,c"
+            //多个字符参数
+            catch_flow!(join_to_multi; ["a", "b", "c"].iter(), &[",", " "]) => "a, b, c"
+            catch_flow!(join_to_multi; ["a", "b", "c"].iter(), &[",".to_owned(), " ".to_owned()]) => "a, b, c"
         }
     }
 
