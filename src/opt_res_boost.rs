@@ -5,7 +5,7 @@
 //!   * ❌最初尝试用于「unwrap时能提供错误信息」，简化`match r {..., Err(e) => panic!("{e}")}`的情形
 //!     * 📝Rust自身就对[`Result::unwrap`]有提示："called `Result::unwrap()` on an `Err` value: ..."
 
-use std::convert::identity;
+use std::{convert::identity, fmt::Debug};
 
 /// 用于为一般的[`Result`]添加功能
 /// * 🎯用于`Result<T, E>`
@@ -22,8 +22,41 @@ pub trait ResultBoost<T, E> {
     /// 使用一个「转换器」函数，将内容相同的[`Result`]的错误转换成另一种错误
     /// * 🎯用于「从其它地方调用方法返回不同类型的错误，但调用处希望仍然能使用`?`上抛」的情况
     /// * 📌亦可使用[`transform`] + [`core::convert::identity`]
-    ///   * ❌【2024-03-20 21:45:25】此处不提供默认实现：consider further restricting `Self`: ` where Self: std::marker::Sized`
-    fn transform_err<Error2>(self, transformer: impl FnMut(E) -> Error2) -> Result<T, Error2>;
+    ///   * ✅【2024-03-24 00:22:54】现在提供默认实现：直接限制`Self: Sized`
+    ///   * 📝基本所有[`Result`]类型都是[`Sized`]的，除非`dyn Trait`之类
+    #[inline(always)]
+    fn transform_err<Error2>(self, transformer: impl FnMut(E) -> Error2) -> Result<T, Error2>
+    where
+        Self: Sized,
+    {
+        self.transform(identity, transformer)
+    }
+
+    /// 将错误自动转换为字符串，并返回一个字符串形式[`Err`]的[`Result`]
+    /// * 🎯用于快速转换成`Result<T, String>`
+    /// * 🎯常用于一些轻量级[`Result`]使用场景
+    ///   * 📌需要使用`?`上报错误，并且需要尽可能详细的错误信息
+    ///   * 📌不希望引入大量的`e.to_string`，但`错误类型::to_string`函数指针又用不了
+    #[inline(always)]
+    fn transform_err_debug(self) -> Result<T, String>
+    where
+        Self: Sized,
+        E: Debug,
+    {
+        self.transform_err(|e| format!("{e:?}"))
+    }
+
+    /// 将错误自动转换为字符串
+    /// * 📌但相比[`ResultBoost::transform_err_debug`]用到了[`ToString`]特征
+    ///   * ✅对[`Display`]也可用：前者自动实现了[`ToString`]
+    #[inline(always)]
+    fn transform_err_string(self) -> Result<T, String>
+    where
+        Self: Sized,
+        E: ToString,
+    {
+        self.transform_err(|e| e.to_string())
+    }
 
     /// 调转[`Ok`]与[`Err`]的类型
     /// * 🎯从`Result<T, E>`调转成`Result<E, T>`
@@ -40,11 +73,6 @@ pub trait ResultBoostSingular<TorE> {
 }
 
 impl<T, E> ResultBoost<T, E> for Result<T, E> {
-    #[inline(always)]
-    fn transform_err<Error2>(self, transformer: impl FnMut(E) -> Error2) -> Result<T, Error2> {
-        self.transform(identity, transformer)
-    }
-
     #[inline]
     fn transform<T2, Error2>(
         self,
@@ -92,12 +120,16 @@ mod test {
             // [`Err`]才会发生转换
             Result::<i32, &str>::Err("这是个错误")
                 .transform_err(|err| err.chars().count()) => Err(5)
+            Result::<i32, &str>::Err("这是个错误") // ↓自动转换为字符串
+                .transform_err_debug() => Err(format!("{:?}", "这是个错误"))
             // [`Ok`]不会发生转换
             Result::<usize, usize>::Ok(0)
                 .transform_err(|err| err + 1) => Ok(0)
             // [`Err`]才会发生转换
             Result::<usize, usize>::Err(0)
                 .transform_err(|err| err + 1) => Err(1)
+            Result::<usize, usize>::Err(0) // ↓自动转换为字符串
+                .transform_err_string() => Err("0".into())
         }
 
         // 场景测试
