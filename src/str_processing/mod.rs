@@ -8,6 +8,8 @@ crate::pub_mod_and_pub_use! {
     join
     // 字符数组切片
     char_slices
+    // to_debug
+    to_debug
 }
 
 // 前后缀匹配
