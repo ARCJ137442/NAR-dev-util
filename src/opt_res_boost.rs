@@ -68,6 +68,10 @@ pub trait ResultBoost<T, E> {
     /// * 🎯从`Result<T, E>`调转成`Result<E, T>`
     /// * 📌内部值不变
     fn flip(self) -> Result<E, T>;
+
+    /// 在自身为[`Ok`]时返回内部值，否则执行某个函数（无返回值）
+    /// 用于「返回内容/报告错误」
+    fn ok_or_run(self, f: impl FnOnce(E)) -> Option<T>;
 }
 
 /// 用于为「奇异[`Result`]」（`Ok`、`Err`类型相同）添加功能
@@ -96,6 +100,17 @@ impl<T, E> ResultBoost<T, E> for Result<T, E> {
         match self {
             Ok(v) => Err(v),
             Err(v) => Ok(v),
+        }
+    }
+
+    #[inline]
+    fn ok_or_run(self, f: impl FnOnce(E)) -> Option<T> {
+        match self {
+            Ok(v) => Some(v),
+            Err(e) => {
+                f(e);
+                None
+            }
         }
     }
 }

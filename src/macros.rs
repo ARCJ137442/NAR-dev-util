@@ -998,3 +998,264 @@ macro_rules! mod_and_pub_use {
         )*
     };
 }
+
+/// # **pipe!**
+///
+/// 一个实用、强大而高效的「管道」宏，允许带任意数量插值的任意函数调用
+/// * 🎯用以实现类似Julia `@pipe`的「管道处理」效果
+/// * 📌使用占位符`_`进行插值
+///   * ✅允许多重插值——但会复制整个表达式
+/// * ✨部分灵感来自Julia的[**Pipe.jl**](https://github.com/oxinabox/Pipe.jl)
+///   * 📄其中的宏`@pipe`有类似的效果
+/// * ⚠️【2024-03-26 00:16:36】目前对「完全限定语法」尚未有良好支持
+///   * 📄`Vec::<usize>::new`会因「大于/小于 符号」失效
+///
+/// ## 📄示例语法
+///
+/// ```rust
+/// use nar_dev_utils::{pipe, asserts};
+/// fn f1(x: i32) -> i32 { x + 1 }
+/// fn f2(x: i32, y: i32) -> i32 { x + y }
+/// fn f3(x: i32, y: i32) -> i32 { x - y }
+///
+/// let v = 1;
+/// let x = 2;
+/// let y = 3;
+/// // (((x + 1) + 2) - 3)
+/// let piped = pipe! { v => f1 => f2(x, _) => (f3)(_, y) => f2(_, _) };
+/// let normal = f2(f3(f2(x, f1(v)), y), f3(f2(x, f1(v)), y));
+/// asserts!{
+///     piped => normal,
+///     piped => 2,
+/// };
+/// ```
+///
+/// ## 🚩内部实现
+///
+/// * 📌递归模型：标签树撕咬机 + 多分派状态机
+///   * 总体流程：用户输入 ⇒ 内部输入 ⇒ 单次管道返回值 ⇒ 尾递归回代
+/// * 📌对「被管道的函数」的语法支持
+///   * `标识符`
+///   * `(表达式)`
+///   * `模块::函数`
+///   * `[对象.方法]`
+///
+/// ## ✅规模化测试
+///
+/// ```rust
+/// use nar_dev_utils::{pipe, asserts};
+/// mod m {
+///     pub fn add_one(x: i32) -> i32 {
+///         x + 1
+///     }
+///     pub fn tri_add(x: i32, y: i32, z: i32) -> i32 {
+///         x + y + z
+///     }
+/// }
+/// use m::add_one;
+///
+/// asserts! {
+///
+///     // 内部情形
+///     pipe! {@CALL [add_one] [1]} => 2,
+///     pipe! {@CALL [i32::checked_add] [1] => [_, 2]} => Some(3),
+///     pipe! {@CALL [m::tri_add] [1] => [_, 2, 3]} => 6,
+///     pipe! {@CALL [m::tri_add] [2] => [1, _, 3]} => 6,
+///     pipe! {@CALL [m::tri_add] [3] => [1, 2, _]} => 6,
+///
+///     // 平凡情况：单个值 //
+///     pipe! { 1 } => 1,
+///     pipe! { 1 + 1 } => 2,
+///     pipe! { add_one(1) } => 2,
+///     pipe! { match 1 { 1 => 2, _ => 0 } } => 2,
+///
+///     // 最简单的情况：单函数 //
+///
+///     // 直接使用标识符
+///     pipe! {1 => add_one} => 2,
+///     // 模块路径
+///     pipe! {1 => m::add_one} => 2,
+///     // 关联函数
+///     pipe! {&vec![1] => Vec::len} => 1,
+///     // 内部使用闭包的表达式
+///     pipe! {1 => (|x| x + 1)} => 2,
+///     // 对象的方法
+///     pipe! {1 => [0_i32.min]} => 0,
+///
+///     // 复杂情况：函数插值 //
+///
+///     // 单重插值语法
+///     pipe! {1 => i32::checked_add(_, 1)} => Some(2),
+///     pipe! {1 => i32::min(0, _)} => 0,
+///     pipe! {1 => (|x, y| x + y)(_, 1)} => 2,
+///     pipe! {1 => (|x, y, z| x * y * z)(1, _, 2)} => 2,
+///
+///     // 多重插值语法 | 直接拷贝表达式
+///     pipe! { @INSERT [usize::checked_add] [1] => [2, 3] } => Some(5)
+///     pipe! { @INSERT [m::tri_add] [1] => [_, _, 3] } => 5
+///     pipe! { @INSERT [m::tri_add] [2] => [1, _, _] } => 5
+///     pipe! { @INSERT [m::tri_add] [3] => [_, 2, _] } => 8
+///     pipe! { @INSERT [usize::checked_add] [0] => [_, _] } => Some(0)
+///     pipe! { @CALL [usize::checked_add] [0] => [_, _] } => Some(0)
+///
+///     // 复杂情况：多函数链路 //
+///
+///     // 直接使用标识符
+///     pipe! {1 => add_one => add_one} => 3,
+///     // 模块路径
+///     pipe! {1 => m::add_one => m::add_one} => 3,
+///     // 关联函数
+///     pipe! {&vec![1] => Vec::len => usize::checked_add(_, 1)} => Some(2),
+///     // 内部使用闭包的表达式
+///     pipe! {1 => (|x| x + 1) => (|x| x + 1)} => 3,
+///     // 对象的方法
+///     pipe! {1 => [0_i32.min] => [1_i32.max]} => 1,
+///
+///     // 大 杂 烩 //
+///     pipe! {
+///         // 最初的值
+///         &vec![1]
+///         // 关联函数
+///         => Vec::len // 1
+///         // 内部使用闭包的表达式
+///         => (|x:usize| x as i32) // 转换类型
+///         => (|x| x + 1) // 2
+///         // 内部使用闭包的表达式（带参数）
+///         => (|x, y| x - y)(_, 1) // 1
+///         // 直接使用标识符
+///         => add_one // 2
+///         // 模块路径
+///         => m::add_one // 3
+///         // 关联函数（带参数）
+///         => i32::checked_sub(_, 1) // Some(2)
+///         => Option::unwrap // 2
+///         // 对象的方法
+///         => [1_i32.min] // 1
+///         => [(-1_i32).max] // 1
+///     } => 1
+/// }
+/// ```
+#[macro_export]
+macro_rules! pipe {
+    // 单函数展开
+    { @CALL [ $($f:tt)* ] [ $($value:expr),* ] } => { $($f)* ( $($value),* ) };
+
+    // 插值语法
+    // * ❌二重插入宏展开结果 不可取
+    {
+        @CALL
+        $f:tt
+        $value:tt => $args:tt
+    } => {
+        pipe! {
+            @INSERT
+            $f
+            $value => $args
+        }
+    };
+    // ! ❌【2024-03-26 00:13:18】↓弃用：nested宏调用失败（宏调用本身被解释成了token）
+    // {
+    //     @CALL $f:tt
+    //     $value:tt => $args:tt
+    // } => {
+    //     pipe! {
+    //         @CALL
+    //         $f
+    //         pipe! {
+    //             @INSERT
+    //             $value => $args
+    //         }
+    //     }
+    // }; // ←此处可能有尾后逗号
+
+    //
+    { // 终态：插入完成
+        @INSERT
+        [ $($f:tt)* ]
+        $_value:tt =>
+        [
+            $( $values:expr ),*
+            $(,)?
+        ]
+    } => { $($f)* ( $( $values ),* ) };
+    { // 中态：不断插入
+        @INSERT
+        $f:tt
+        [ $value:expr ] =>
+        [
+            $( $value_past:expr, )*
+            _
+            $( $tail:tt )*
+        ]
+    } => {
+        pipe! {
+            @INSERT
+            $f
+            [ $value ] =>
+            [
+                $( $value_past, )*
+                $value
+                $( $tail )*
+            ]
+        }
+    };
+
+    // 简单情形：表达式/令牌树 | ✅实验用，现已弃用
+    // { $value:expr => [$($dot_path:tt).+] } => {pipe!{ @CALL [$($dot_path).+] [($value)] }};
+    // { $value:expr => $f:ident } => {pipe!{ @CALL [$f] [($value)] }};
+    // { $value:expr => $f:path } => {pipe!{ @CALL [$f] [($value)] }};
+    // { $value:expr => ($f:expr) } => {pipe!{ @CALL [($f)] [($value)] }};
+    // { $value:expr => $f:tt } => {pipe!{ @CALL [$f] [($value)] }}; // ! ❌【2024-03-25 23:01:46】不能启用`tt`：会把`[$dot_path]`搞歧义
+
+    // pipe! {@CALL[[0_i32.min]][(1)]}
+    // [0_i32.min]((1))
+
+    // 递归出口：所有值都折叠到单个表达式
+    { $value:expr } => { $value };
+    // 用户入口：单个管道方法/点路径`self.method`
+    {
+        $value:expr =>
+        [ $($dot_path:tt).+ ] $( ( $($param:tt)* ) )?
+        $( => $($tail:tt)*)?
+    } => {
+        pipe! {
+            pipe! {
+                @CALL
+                [ $($dot_path).+ ]
+                [ ($value) ] $( => [ $($param)* ] )?
+            }
+            $( => $($tail)*)?
+        }
+    };
+    // 用户入口：单个管道方法/模块路径`module::function`
+    {
+        $value:expr =>
+        $($p:tt)::+           $( ( $($param:tt)* ) )?
+        $( => $($tail:tt)*)?
+    } => {
+        pipe! {
+            pipe! {
+                @CALL
+                [ $($p)::+ ]
+                [ ($value) ] $( => [ $($param)* ] )?
+            }
+            $( => $($tail)*)?
+        }
+    }; // ! ❌不能直接用`path`匹配：后边无法跟`(...)`
+    // 用户入口：单个管道方法/单个表达式`(expr1 + expr2)`
+    {
+        $value:expr =>
+        ($f:expr)             $( ( $($param:tt)* ) )?
+        $( => $($tail:tt)*)?
+    } => {
+        pipe!{
+            pipe! {
+                @CALL
+                [ ($f) ]
+                [ ($value) ] $( => [ $($param)* ] )?
+            }
+            $( => $($tail)*)?
+        }
+    };
+    // { $value:expr => $f:tt } => {pipe!{ @CALL [$f] [($value)] }}; // ! ❌【2024-03-25 23:01:46】不能启用`tt`：会把`[$dot_path]`搞歧义
+}
