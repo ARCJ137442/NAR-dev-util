@@ -1,7 +1,7 @@
 //! 辅助各种「字符串join」的方法
 //! * 🎯用于各种定制的字符串join方式
 
-use crate::{push_str, AsStrRef};
+use crate::{catch_flow, push_str, AsStrRef};
 
 /// 拼接字串到指定目标
 /// * 🎯将字符串集中拼接到一个「目标字串」中，中途不创建任何辅助字符串
@@ -23,6 +23,13 @@ pub fn join_to(out: &mut String, iter: impl Iterator<Item = impl AsStrRef>, sep:
         // 添加元素
         out.push_str(s.as_str_ref());
     }
+}
+
+/// 拼接字符串到新字串
+/// * 🎯类似[`join_to`]，但会创建新字串
+/// * 🚩基于[`catch_flow`]实现
+pub fn join_to_new(iter: impl Iterator<Item = impl AsStrRef>, sep: impl AsStrRef) -> String {
+    catch_flow!(join_to; iter, sep)
 }
 
 /// 拼接字串到指定目标，但在每次添加时添加多个分隔符
@@ -54,6 +61,16 @@ pub fn join_to_multi(
         // 添加元素
         out.push_str(s.as_str_ref());
     }
+}
+
+/// 拼接字符串到新字串/多个分隔符
+/// * 🎯类似[`join_to_multi`]，但会创建新字串
+/// * 🚩基于[`catch_flow`]实现
+pub fn join_to_multi_new(
+    iter: impl Iterator<Item = impl AsStrRef>,
+    sep: &[impl AsStrRef],
+) -> String {
+    catch_flow!(join_to_multi; iter, sep)
 }
 
 /// 工具函数/有内容时前缀分隔符
@@ -111,6 +128,54 @@ pub fn join_lest_multiple_separators<S>(
     }
 }
 
+/// 为迭代器实现`join`系列方法
+/// * 🎯尝试补全「只有数组能被`join`」的缺陷
+pub trait JoinTo {
+    /// 将字串集中拼接到一个「目标字串」中，中途不创建任何辅助字符串
+    /// * 📌类似JavaScript的`Array.join()`方法
+    /// * 📄参见全局函数[`join_to`]
+    fn join_to<S>(self, out: &mut String, sep: impl AsStrRef)
+    where
+        Self: Iterator<Item = S> + Sized,
+        S: AsStrRef,
+    {
+        join_to(out, self, sep)
+    }
+
+    /// 将字串集中拼接到一个新字串中
+    /// * 📌类似JavaScript的`Array.join()`方法
+    /// * 📄参见全局函数[`join_to`]
+    fn join_to_new<S>(self, sep: impl AsStrRef) -> String
+    where
+        Self: Iterator<Item = S> + Sized,
+        S: AsStrRef,
+    {
+        join_to_new(self, sep)
+    }
+
+    /// 将字串集中拼接到一个「目标字串」中，使用多个分隔符，中途不创建任何辅助字符串
+    /// * 📄参见全局函数[`join_to_multi`]
+    fn join_to_multi<S>(self, out: &mut String, sep: &[impl AsStrRef])
+    where
+        Self: Iterator<Item = S> + Sized,
+        S: AsStrRef,
+    {
+        join_to_multi(out, self, sep)
+    }
+
+    /// 将字串集中拼接到一个新字串中，使用多个分隔符
+    /// * 📄参见全局函数[`join_to_multi`]
+    fn join_to_multi_new<S>(self, sep: &[impl AsStrRef]) -> String
+    where
+        Self: Iterator<Item = S> + Sized,
+        S: AsStrRef,
+    {
+        join_to_multi_new(self, sep)
+    }
+}
+
+impl<T> JoinTo for T {}
+
 /// 单元测试
 #[cfg(test)]
 mod tests {
@@ -121,7 +186,8 @@ mod tests {
     fn test_join_to() {
         asserts! {
             // 静态字串
-            catch_flow!(join_to; ["a", "b", "c"].iter(), ",") => "a,b,c"
+            catch_flow!(join_to; ["a", "b", "c"].iter(), ",") => "a,b,c",
+            ["a", "b", "c"].iter().join_to_new(",") => "a,b,c"
             // 动态字串
             catch_flow!(
                 join_to;
@@ -134,7 +200,8 @@ mod tests {
             ) => "a,b,c"
             //多个字符参数
             catch_flow!(join_to_multi; ["a", "b", "c"].iter(), &[",", " "]) => "a, b, c"
-            catch_flow!(join_to_multi; ["a", "b", "c"].iter(), &[",".to_owned(), " ".to_owned()]) => "a, b, c"
+            catch_flow!(join_to_multi; ["a", "b", "c"].iter(), &[",".to_owned(), " ".to_owned()]) => "a, b, c",
+            ["a", "b", "c"].iter().join_to_multi_new(&[",", " "]) => "a, b, c"
         }
     }
 
