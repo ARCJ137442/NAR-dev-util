@@ -31,9 +31,6 @@ feature_pub_mod_and_reexport! {
 
     // [`Option`][`Result`]增强
     "opt_res_boost" => opt_res_boost
-
-    // FP格式
-    "fp_form" => fp_form
 }
 
 // 其它模块 //
