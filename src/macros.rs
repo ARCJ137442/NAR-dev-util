@@ -1072,6 +1072,19 @@ macro_rules! mod_and_pub_use {
 ///     pipe! { add_one(1) } => 2,
 ///     pipe! { match 1 { 1 => 2, _ => 0 } } => 2,
 ///
+///     // 最简单的情况：单函数 //
+///
+///     // 直接使用标识符
+///     pipe! {1 => add_one} => 2,
+///     // 模块路径
+///     pipe! {1 => m::add_one} => 2,
+///     // 关联函数
+///     pipe! {&vec![1] => Vec::len} => 1,
+///     // 内部使用闭包的表达式
+///     pipe! {1 => (|x| x + 1)} => 2,
+///     // 对象的方法
+///     pipe! {1 => [0_i32.min]} => 0,
+///
 ///     // 实用辅助：借用、访问 //
 ///
 ///     // 测试`self.method`
@@ -1094,18 +1107,29 @@ macro_rules! mod_and_pub_use {
 ///         s_0.0
 ///     } => "Hello, pipe!",
 ///
-///     // 最简单的情况：单函数 //
+///     // 实用辅助：数组索引、上抛、后缀运算 //
 ///
-///     // 直接使用标识符
-///     pipe! {1 => add_one} => 2,
-///     // 模块路径
-///     pipe! {1 => m::add_one} => 2,
-///     // 关联函数
-///     pipe! {&vec![1] => Vec::len} => 1,
-///     // 内部使用闭包的表达式
-///     pipe! {1 => (|x| x + 1)} => 2,
-///     // 对象的方法
-///     pipe! {1 => [0_i32.min]} => 0,
+///     // 测试`self[i]`
+///     pipe! {
+///         ["this", "is", "an", "array"]
+///         => {[3]}# // 索引第三个元素
+///         => .to_uppercase() // 全大写
+///     } => "ARRAY",
+///     // 测试`self?`、`self+1`
+///     {
+///         fn parse_and_add_one(input: impl AsRef<str>) -> Result<usize, std::num::ParseIntError> {
+///             pipe! {
+///                 input
+///                 => .as_ref() // 先转成字符串引用
+///                 => (str::parse::<usize>) // 再调用「解析」方法
+///                 => {?}# // 解析失败时，上抛错误
+///                 => {+1}# // 后缀`+1`
+///                 => Result::Ok // 包装进Result中
+///             }
+///         }
+///         // 检验处理过程
+///         (parse_and_add_one("1").unwrap(), parse_and_add_one("err"))
+///     } => (2, "err".parse::<usize>()),
 ///
 ///     // 复杂情况：函数插值 //
 ///
@@ -1245,6 +1269,17 @@ macro_rules! pipe {
     } => {
         pipe! {
             $($prefix)* $value
+            $( => $($tail)*)?
+        }
+    };
+    // 用户入口：单个管道方法/附加后缀`self?`
+    {
+        $value:expr =>
+        { $($suffix:tt)* }#
+        $( => $($tail:tt)*)?
+    } => {
+        pipe! {
+            $value $($suffix)*
             $( => $($tail)*)?
         }
     };

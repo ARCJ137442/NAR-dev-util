@@ -13,6 +13,37 @@ use std::{convert::identity, fmt::Debug};
 ///   * 📌或者简单统一多个来源的不同类型错误
 pub type ResultS<T> = Result<T, String>;
 
+/// 用于为一般的[`Option`]添加功能
+pub trait OptionBoost<T> {
+    /// 🚩在自身为`None`时执行代码，并返回自身
+    /// * 🎯填补[`Option`]「只有对[`Some`]的`inspect`而没有对[`None`]的`inspect`」的情况
+    fn inspect_none(self, none_handler: impl FnOnce()) -> Self
+    where
+        Self: Sized;
+
+    /// 强制将自身转换为[`None`]
+    /// * 📌销毁内部的值
+    fn none(self) -> Self
+    where
+        Self: Sized;
+}
+
+impl<T> OptionBoost<T> for Option<T> {
+    fn inspect_none(self, none_handler: impl FnOnce()) -> Self {
+        if self.is_none() {
+            none_handler()
+        }
+        self
+    }
+
+    fn none(self) -> Self
+    where
+        Self: Sized,
+    {
+        None
+    }
+}
+
 /// 用于为一般的[`Result`]添加功能
 /// * 🎯用于`Result<T, E>`
 pub trait ResultBoost<T, E> {
