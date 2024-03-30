@@ -158,7 +158,8 @@ impl<T> ResultBoostSingular<T> for Result<T, T> {
 /// 单元测试
 #[cfg(test)]
 mod test {
-    use crate::{asserts, ResultBoost, ResultBoostSingular};
+    use super::*;
+    use crate::asserts;
 
     /// 测试[`Result::transform_err`]
     #[test]
