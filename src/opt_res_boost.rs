@@ -14,18 +14,18 @@ use std::{convert::identity, fmt::Debug};
 pub type ResultS<T> = Result<T, String>;
 
 /// 用于为一般的[`Option`]添加功能
-pub trait OptionBoost<T> {
+pub trait OptionBoost<T>: Sized {
     /// 🚩在自身为`None`时执行代码，并返回自身
     /// * 🎯填补[`Option`]「只有对[`Some`]的`inspect`而没有对[`None`]的`inspect`」的情况
-    fn inspect_none(self, none_handler: impl FnOnce()) -> Self
-    where
-        Self: Sized;
+    fn inspect_none(self, none_handler: impl FnOnce()) -> Self;
 
     /// 强制将自身转换为[`None`]
     /// * 📌销毁内部的值
-    fn none(self) -> Self
-    where
-        Self: Sized;
+    fn none(self) -> Self;
+
+    /// 在自身为[`Some`]时，执行函数处理其内值，否则返回指定的值
+    /// * 📌实际上为`self.map(f).unwrap_or(else_value)`的简写
+    fn map_unwrap_or<U>(self, f: impl FnOnce(T) -> U, default: U) -> U;
 }
 
 impl<T> OptionBoost<T> for Option<T> {
@@ -41,6 +41,16 @@ impl<T> OptionBoost<T> for Option<T> {
         Self: Sized,
     {
         None
+    }
+
+    #[inline]
+    #[must_use]
+    fn map_unwrap_or<U>(self, f: impl FnOnce(T) -> U, default: U) -> U {
+        // self.map(f).unwrap_or(else_value)
+        match self {
+            Some(t) => f(t),
+            None => default,
+        }
     }
 }
 
