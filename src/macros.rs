@@ -976,7 +976,8 @@ macro_rules! feature_pub_mod_and_reexport {
 ///   * ✅`<module>` => `mod`
 ///   * ✅`pub <module>` => `pub mod`
 ///   * 🆕`use <module>` => `mod` + `use`
-///   * 🆕`pub use <module>` => `mod` + `pub use `
+///   * 🆕`pub use <module>` => `mod` + `pub use`
+///   * 🆕`use pub <module>` => `pub mod` + `use`
 ///   * 🆕`pub pub <module>` => `pub mod` + `pub use`
 /// * ✨简化【依赖于特性】的「mod-pub-use」语法（会同时应用在`mod`和`use`语句中）
 ///   * 🆕`"feature" => <mod-pub-use>` => `#[cfg(feature = "feature")] <mod-pub-use>`
@@ -992,10 +993,11 @@ macro_rules! feature_pub_mod_and_reexport {
 ///     mod1;
 ///     pub mod2;
 ///     use mod3;
-///     pub use mod3;
-///     pub pub mod4;
-///     "feature1" => pub pub mod5;
-///     (!"feature1") => pub pub mod6;
+///     pub use mod4;
+///     use pub mod5;
+///     pub pub mod6;
+///     "feature1" => pub pub mod7;
+///     (!"feature1") => pub pub mod8;
 /// }
 /// ```
 ///
@@ -1009,21 +1011,24 @@ macro_rules! feature_pub_mod_and_reexport {
 /// mod mod3;
 /// use mod3::*;
 ///
-/// mod mod3;
-/// pub use mod3::*;
-///
-/// pub mod mod4;
+/// mod mod4;
 /// pub use mod4::*;
 ///
-/// #[cfg(feature = "feature1")]
 /// pub mod mod5;
+/// use mod5::*;
+///
+/// pub mod mod6;
+/// pub use mod6::*;
+///
 /// #[cfg(feature = "feature1")]
-/// pub use mod5::*;
+/// pub mod mod7;
+/// #[cfg(feature = "feature1")]
+/// pub use mod7::*;
 ///
 /// #[cfg(not(feature = "feature1"))]
-/// pub mod mod6;
+/// pub mod mod8;
 /// #[cfg(not(feature = "feature1"))]
-/// pub use mod6::*;
+/// pub use mod8::*;
 /// ```
 // #[cfg(not(test))] // ! 此类宏不能在测试中运行
 #[macro_export]
@@ -1039,6 +1044,8 @@ macro_rules! mods {
     {@SINGLE $([$cfg:meta])* pub $mod_name:ident } => { $(#[$cfg])* pub mod $mod_name; };
     // fallback/use
     {@SINGLE $([$cfg:meta])* use $mod_name:ident } => { $(#[$cfg])* mod $mod_name; $(#[$cfg])* use $mod_name::*; };
+    // fallback/use pub
+    {@SINGLE $([$cfg:meta])* use pub $mod_name:ident } => { $(#[$cfg])* pub mod $mod_name; $(#[$cfg])* use $mod_name::*; };
     // fallback/pub use
     {@SINGLE $([$cfg:meta])* pub use $mod_name:ident } => { $(#[$cfg])* mod $mod_name; $(#[$cfg])* pub use $mod_name::*; };
     // fallback/pub pub
