@@ -1052,7 +1052,7 @@ macro_rules! mods {
     {@SINGLE $([$cfg:meta])* pub pub $mod_name:ident } => { $(#[$cfg])* pub mod $mod_name; $(#[$cfg])* pub use $mod_name::*; };
     // cfg/feature
     {@SINGLE $feature_name:literal => $($pub_use_mod:ident)+ } => {
-        mods! {
+        $crate::mods! {
             @SINGLE
             [cfg(feature = $feature_name)]
             $($pub_use_mod)+
@@ -1063,7 +1063,7 @@ macro_rules! mods {
     // ! 无法使用`not(feature)`：不能被通配成一个`tt`
     // ! 🚩【2024-03-30 16:06:18】现在使用单个括号将整体括起
     {@SINGLE (!$feature_name:literal) => $($pub_use_mod:ident)+ } => {
-        mods! {
+        $crate::mods! {
             @SINGLE
             [cfg(not(feature = $feature_name))]
             $($pub_use_mod)+
@@ -1073,21 +1073,21 @@ macro_rules! mods {
     // 单个/带特性 | 必须后置并匹配多个：前置/后置指定数目 都会产生歧义
     // ! ❌无法使用`$($feature_setting =>)?`合并二者：`tt`会吃掉分号，产生歧义
     { $feature_setting:tt => $($pub_use_mod:ident)+ ; $($tail:tt)* } => {
-        mods! {
+        $crate::mods! {
             @SINGLE
             $feature_setting => $($pub_use_mod)+
         }
-        mods! {
+        $crate::mods! {
             $($tail)*
         }
     };
     // 单个 | 必须后置并匹配多个：前置/后置指定数目 都会产生歧义
     { $($pub_use_mod:ident)+ ; $($tail:tt)* } => {
-        mods! {
+        $crate::mods! {
             @SINGLE
             $($pub_use_mod)+
         }
-        mods! {
+        $crate::mods! {
             $($tail)*
         }
     };
