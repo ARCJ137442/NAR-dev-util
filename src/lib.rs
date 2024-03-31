@@ -31,10 +31,19 @@ feature_pub_mod_and_reexport! {
 
     // [`Option`][`Result`]增强
     "opt_res_boost" => opt_res_boost
+
 }
 
 // 其它模块 //
+
+// 字符串处理
 #[cfg(feature = "str_processing")]
 mod str_processing;
 #[cfg(feature = "str_processing")]
 pub use str_processing::*;
+
+// 枚举联合
+#[cfg(feature = "enum_union")]
+mod enum_union;
+#[cfg(feature = "enum_union")]
+pub use enum_union::*;

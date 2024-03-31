@@ -26,6 +26,8 @@ pub trait OptionBoost<T>: Sized {
     /// 在自身为[`Some`]时，执行函数处理其内值，否则返回指定的值
     /// * 📌实际上为`self.map(f).unwrap_or(else_value)`的简写
     fn map_unwrap_or<U>(self, f: impl FnOnce(T) -> U, default: U) -> U;
+
+    // ! 📝有关`&Option<T>` -> `Option<&T>`的「引用内置」转换，可使用[`Option::as_ref`]
 }
 
 impl<T> OptionBoost<T> for Option<T> {
