@@ -28,6 +28,23 @@ pub trait OptionBoost<T>: Sized {
     fn map_unwrap_or<U>(self, f: impl FnOnce(T) -> U, default: U) -> U;
 
     // ! 📝有关`&Option<T>` -> `Option<&T>`的「引用内置」转换，可使用[`Option::as_ref`]
+
+    /// 实现从其它[`Option`]的「空值合并」操作
+    /// * ✨只需使用「并入值」的不可变引用，后续要合并时调用「值生成函数」
+    /// * ⚡最大程度惰性生成值（如「惰性拷贝」）
+    fn coalesce<F>(&mut self, other: &Self, f: F)
+    where
+        F: FnOnce(&T) -> T;
+
+    /// 实现从其它[`Option`]的「空置拷贝合并」操作
+    /// * ✨只需使用「并入值」的不可变引用，后续要合并时才拷贝已有值
+    /// * ⚡最大程度惰性拷贝值
+    fn coalesce_clone(&mut self, other: &Self)
+    where
+        T: Clone,
+    {
+        self.coalesce(other, T::clone)
+    }
 }
 
 impl<T> OptionBoost<T> for Option<T> {
@@ -52,6 +69,17 @@ impl<T> OptionBoost<T> for Option<T> {
         match self {
             Some(t) => f(t),
             None => default,
+        }
+    }
+
+    #[inline]
+    fn coalesce<F>(&mut self, other: &Self, f_value_gen: F)
+    where
+        F: FnOnce(&T) -> T,
+    {
+        // 仅在self为None、other不为None时，将other的值赋给self
+        if let (None, Some(v)) = (&self, other) {
+            *self = Some(f_value_gen(v))
         }
     }
 }
@@ -147,6 +175,7 @@ impl<T, E> ResultBoost<T, E> for Result<T, E> {
     }
 
     #[inline]
+    #[must_use]
     fn ok_or_run(self, f: impl FnOnce(E)) -> Option<T> {
         match self {
             Ok(v) => Some(v),
