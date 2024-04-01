@@ -1134,10 +1134,12 @@ macro_rules! mod_and_pub_use {
 ///   * ✅允许多重插值——但会复制整个表达式
 /// * ✨部分灵感来自Julia的[**Pipe.jl**](https://github.com/oxinabox/Pipe.jl)
 ///   * 📄其中的宏`@pipe`有类似的效果
-/// * ⚠️【2024-03-26 00:16:36】目前对「完全限定语法」尚未有良好支持
+/// * ⚠️【2024-03-26 00:16:36】目前对「完全限定语法」尚未有良好兼容
 ///   * 📄`Vec::<usize>::new`会因「大于/小于 符号」失效
+///   * ✅可使用「代码后缀」语法模拟，但其中**不提供插值**
+///     * 📄如`=> {.collect::<Vec<_>>()}#`
 ///
-/// ## 📄示例语法
+/// ## 📄示例 Examples
 ///
 /// ```rust
 /// use nar_dev_utils::{pipe, asserts};
@@ -1469,6 +1471,271 @@ macro_rules! pipe {
     // { $value:expr => $f:tt } => {pipe!{ @CALL [$f] [($value)] }}; // ! ❌【2024-03-25 23:01:46】不能启用`tt`：会把`[$dot_path]`搞歧义
 }
 
+/// # **manipulate!**
+///
+/// 一个实用、强大而高效的「操作」宏，允许对值进行流式操作并返回自身
+/// * 🎯用以简化「创建值，对值进行操作，最后返回值」的模板代码
+///   * 📄初始化集合、[`HashMap`]等数据类型
+///
+/// ## 📄示例 Examples
+///
+/// ```rust
+///
+/// use nar_dev_utils::{asserts, manipulate, pipe};
+///
+/// // 示例/数值 //
+/// let n = manipulate!(
+///     2
+///     => {+= 1}# // 后缀语法 => `2 += 1`
+///     => {-= 2}#
+/// );
+/// assert_eq!(n, 1);
+///
+/// // 示例/字符串 //
+/// let s = manipulate! (
+///     String::new() // 创建一个字符串，并在下方进行操作
+///     => .push_str("foo") // 向字符串添加字符切片
+///     => .push('b') // 向字符串添加字符
+///     => .push('a') // 向字符串添加字符
+///     => .push('r') // 再向字符串添加字符
+///     => { += "无效"}# // 向字符串添加字串切片（附加运算符）
+///     => .split_off(6) // 抛出索引`6`以外的字符串，并消耗它
+/// ); // 最后返回修改后的字符串
+/// assert_eq!(s, "foobar");
+///
+/// // 示例/双端队列 | 主要展示**用法** //
+/// use std::collections::VecDeque;
+/// let pop_front = VecDeque::pop_front;
+/// fn back_push<T>(x: T, s: &mut VecDeque<T>) {
+///     s.push_back(x)
+/// }
+///
+/// let mut v = VecDeque::new();
+/// manipulate! (
+///     &mut v
+///     => VecDeque::push_front(_, 0) // 关联函数调用+插值
+///     => back_push(1, _) // 不同位置的插值 | ⚠️可变引用不可能双重插值
+///     => .insert(1, 2) // 方法调用
+///     => pop_front // 函数变量调用
+///     => VecDeque::pop_back // 关联函数调用，带路径
+///     => ({
+///         // 可以在此执行代码
+///         type Vdq<T> = VecDeque<T>;
+///         |v: &mut Vdq<_>| v.remove(1) // 允许使用闭包进行操作
+///     })
+/// );
+/// // 整个流程：[] => [0] => [0, 1] => [0, 2, 1] => [2, 1] => [2] => [2]
+/// assert_eq!(v, [2]);
+///
+/// // 示例/集合 //
+/// use std::collections::HashSet;
+/// let set = manipulate! (
+///     HashSet::new() // 创建集合
+///     => .insert(3) // 集合填入`3`
+///     => .insert(2) // 集合填入`2`
+///     => .insert(1) // 集合填入`1`
+/// );
+/// asserts! {
+///     manipulate!(
+///         pipe! {
+///             set // 引入集合，进行管道操作
+///             => .iter() // 迭代器
+///             => .cloned() // 复制
+///             => {.collect::<Vec<_>>()}# // 收集
+///         }
+///         // 数组排序（从小到大）
+///         => .sort()
+///     ) // ↓检验相等
+///     => [1, 2, 3],
+///     // 集合的相等，证明顺序无关
+///     set => manipulate! (
+///         HashSet::new() // 创建集合
+///         => .insert(1) // 集合填入`1`
+///         => .insert(2) // 集合填入`2`
+///         => .insert(3) // 集合填入`3`
+///     )
+/// }
+/// ```
+#[macro_export]
+macro_rules! manipulate {
+    // 单函数展开
+    { @CALL [ $($f:tt)* ] [ $($value:expr),* ] } => { $($f)* ( $($value),* ); };
+
+    // 插值语法
+    // * ❌二重插入宏展开结果 不可取
+    {
+        @CALL
+        $f:tt
+        $value:tt => $args:tt
+    } => {
+        manipulate! {
+            @INSERT
+            $f
+            $value => $args
+        }
+    };
+    { // 终态：插入完成
+        @INSERT
+        [ $($f:tt)* ]
+        $_value:tt =>
+        [
+            $( $values:expr ),*
+            $(,)?
+        ]
+    } => { $($f)* ( $( $values ),* ) };
+    { // 中态：不断插入
+        @INSERT
+        $f:tt
+        [ $value:expr ] =>
+        [
+            $( $value_past:expr, )*
+            _
+            $( $tail:tt )*
+        ]
+    } => {
+        manipulate! {
+            @INSERT
+            $f
+            [ $value ] =>
+            [
+                $( $value_past, )*
+                $value
+                $( $tail )*
+            ]
+        }
+    };
+
+    // 递归出口：返回值本身
+    { @MANIPULATE $value:expr } => { $value };
+    // 用户入口：构建「变量操作」上下文
+    // * ✅对「传入可变引用」的逻辑进行特别优化
+    //   * 🎯避免clippy抱怨「重复`mut`」警告
+    //   * 📝可变引用直接捕获其自身，无需在变量处附加`mut`
+    // * 🚩方法：递归展开语句流
+    { &mut $value:expr => $( $tail:tt )+ } => {
+        {
+            let value = &mut $value;
+            manipulate! {
+                @MANIPULATE
+                value
+                => $($tail)+
+            }
+            // * 📝最后会返回值本身
+        }
+    };
+    // 用户入口：构建「变量操作」上下文
+    { $value:expr => $( $tail:tt )+ } => {
+        {
+            let mut value = $value;
+            manipulate! {
+                @MANIPULATE
+                value
+                => $($tail)+
+            }
+            // * 📝最后会返回值本身
+        }
+    };
+    // 过程入口：单个操作方法/附加前缀`&self`
+    {
+        @MANIPULATE
+        $value:expr =>
+        #{ $($prefix:tt)* }
+        $( => $($tail:tt)*)?
+    } => {
+        // ! ↓使用`let _ = `避免编译器`unused`警告
+        let _ = $($prefix)* $value;
+        manipulate! {
+            @MANIPULATE
+            $value
+            $( => $($tail)*)?
+        }
+    };
+    // 过程入口：单个操作方法/附加后缀`self?`
+    {
+        @MANIPULATE
+        $value:expr =>
+        { $($suffix:tt)* }#
+        $( => $($tail:tt)*)?
+    } => {
+        // ! ↓使用`let _ = `避免编译器`unused`警告
+        let _ = $value $($suffix)*;
+        manipulate! {
+            @MANIPULATE
+            $value
+            $( => $($tail)*)?
+        }
+    };
+    // 过程入口：单个操作方法/点号语法`self.method`/`self.field`
+    {
+        @MANIPULATE
+        $value:expr =>
+        . $key:tt $( ( $($param:tt)* ) )?
+        $( => $($tail:tt)*)?
+    } => {
+        // ! ↓使用`let _ = `避免编译器`unused`警告
+        let _ = $value.$key $( ( $($param)* ) )? ;
+        manipulate! {
+            @MANIPULATE
+            $value
+            $( => $($tail)*)?
+        }
+    };
+    // 过程入口：单个操作方法/点路径`self.method`
+    {
+        @MANIPULATE
+        $value:expr =>
+        [ $($dot_path:tt).+ ] $( ( $($param:tt)* ) )?
+        $( => $($tail:tt)*)?
+    } => {
+        manipulate! {
+            @CALL
+            [ $($dot_path).+ ]
+            [ ($value) ] $( => [ $($param)* ] )?
+        }
+        manipulate! {
+            @MANIPULATE
+            $value
+            $( => $($tail)*)?
+        }
+    };
+    // 过程入口：单个操作方法/模块路径`module::function`
+    {
+        @MANIPULATE
+        $value:expr =>
+        $($p:tt)::+           $( ( $($param:tt)* ) )?
+        $( => $($tail:tt)*)?
+    } => {
+        manipulate! {
+            @CALL
+            [ $($p)::+ ]
+            [ ($value) ] $( => [ $($param)* ] )?
+        }
+        manipulate! {
+            @MANIPULATE
+            $value
+            $( => $($tail)*)?
+        }
+    }; // ! ❌不能直接用`path`匹配：后边无法跟`(...)`
+    // 过程入口：单个操作方法/单个表达式`(expr1 + expr2)`
+    {
+        @MANIPULATE
+        $value:expr =>
+        ($f:expr)             $( ( $($param:tt)* ) )?
+        $( => $($tail:tt)*)?
+    } => {
+        manipulate! {
+            @CALL
+            [ ($f) ]
+            [ ($value) ] $( => [ $($param)* ] )?
+        }
+        manipulate!{
+            @MANIPULATE
+            $value
+            $( => $($tail)*)?
+        }
+    };
+}
+
 /// `for-in-if`格式
 /// * 🎯使用类似「列表推导式」的方式组织`for`循环代码
 /// * ✨支持类似「列表推导式」的语法，但能在其中运行代码块
@@ -1689,6 +1956,3 @@ macro_rules! list {
         ]
     };
 }
-
-#[test]
-fn t() {}
