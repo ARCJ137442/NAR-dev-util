@@ -301,18 +301,20 @@ mod tests {
         let f2 = Float::from(0.1_f32);
 
         asserts! {
-            // 值相同，但类型不同
+            // 值相同，但类型不同 //
             f != f2,
             !f.eq_variant(&f2),
 
-            // 向下转换
+            // 向下转换 //
             f.is_variant::<f64>(),
             !f.is_variant::<f32>(),
             f.try_into_variant() != Some(0.1_f32),
             f.try_into_variant::<f32>() => None,
             f.try_into_variant::<f64>() => Some(0.1_f64),
 
-            f.try_into_variant::<f64>().unwrap() => f2.try_into_variant::<f32>().unwrap() as f64
+            // * 📝`f32`转换为`f64`会有冗余：`0.1_f32` => `0.10000000149011612_f64`
+            // * 🚩【2024-04-05 01:19:44】目前不使用`as f64`而统一到更低精度的`f32`
+            f.try_into_variant::<f64>().unwrap() as f32 => f2.try_into_variant::<f32>().unwrap()
         }
     }
 

@@ -47,6 +47,7 @@ where
 /// * 📌内部使用的搜索函数
 #[cfg(feature = "algorithms")]
 #[inline(always)]
+#[allow(dead_code)] // * 📄最初于`cargo publish`中发现
 pub(crate) fn search_by<T, Target, F>(arr: &[T], target: &Target, cmp: F) -> Result<usize, usize>
 where
     F: Fn(&Target, &T) -> Ordering,
@@ -59,6 +60,7 @@ where
 /// * 📌内部默认使用的搜索函数
 #[cfg(not(feature = "algorithms"))]
 #[inline(always)]
+#[allow(dead_code)] // * 📄最初于`cargo publish`中发现
 pub(crate) fn search_by<T, Target, F>(arr: &[T], target: &Target, cmp: F) -> Result<usize, usize>
 where
     F: Fn(&Target, &T) -> Ordering,
