@@ -1726,6 +1726,7 @@ macro_rules! manipulate {
         }
     };
     // 过程入口：单个操作方法/点号语法`self.method`/`self.field`
+    // * 📝不同于其它方法调用，`.`会尝试自动进行可变借用
     {
         @MANIPULATE
         $value:expr =>
@@ -1750,7 +1751,7 @@ macro_rules! manipulate {
         manipulate! {
             @CALL
             [ $($dot_path).+ ]
-            [ ($value) ] $( => [ $($param)* ] )?
+            [ (&mut $value) ] $( => [ $($param)* ] )?
         }
         manipulate! {
             @MANIPULATE
