@@ -23,3 +23,4 @@
 - ✨`Vec`工具：数组集合操作、搜索算法……
 - ✨字符串⇒字符迭代器：`str::into_chars`
 - ✨`Option`、`Result`增强：合并、转换（`Err`）
+- ✨枚举联合：使用枚举`enum`定义类似TypeScript`A | B | C`的「联合类型」
