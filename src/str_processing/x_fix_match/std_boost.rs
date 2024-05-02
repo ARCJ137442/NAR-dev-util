@@ -39,21 +39,24 @@ impl StartsWithStr for [char] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::asserts;
+    use crate::{asserts, macro_once};
 
     /// 测试 &[char]是否支持&str的前缀匹配
     #[test]
     fn test_starts_with_str() {
-        macro_rules! chars {
-            ($( $char:literal )*) => {
-                [$( $char ),*]
-            };
-        }
-        asserts! {
-            chars!['a' 'b' 'c'].starts_with_str("abc")
-            chars!['a' 'b' 'c'].starts_with_str("ab")
-            chars!['a' 'b' 'c'].starts_with_str("a")
-            chars!['a' 'b' 'c'].starts_with_str("")
+        macro_once! {
+            /// * 🚩模式：[字符...] => 预期前缀
+            macro test_starts_with_str( $( [ $( $char:literal )* ] => $prefix:expr ; )* ) {
+                asserts! {
+                    $(
+                        [$( $char ),*].starts_with_str($prefix),
+                    )*
+                }
+            }
+            ['a' 'b' 'c'] => "abc";
+            ['a' 'b' 'c'] => "ab";
+            ['a' 'b' 'c'] => "a";
+            ['a' 'b' 'c'] => "";
         }
     }
 }

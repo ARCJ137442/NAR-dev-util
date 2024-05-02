@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn test_suffix_match() {
         // 实用宏
-        macro_rules! mpf {
+        macro_rules! msf {
             {
                 $d:expr;
                 // 待匹配的字符串自面量 ⇒ 匹配到的字符串自面量(Option)
@@ -360,7 +360,7 @@ mod tests {
         );
         show!(&d);
         // 测试后缀匹配
-        mpf! {
+        msf! {
             d;
             // 长的优先
             r"<A --> B>. :|:" => Some(r":|:")
@@ -382,7 +382,7 @@ mod tests {
         show!(&d);
 
         // 测试后缀匹配
-        mpf! {
+        msf! {
             d;
             // 所有枚举情况
             "<A --> B>." => Some(".")

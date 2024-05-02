@@ -20,7 +20,7 @@ impl<T: std::fmt::Debug> ToDebug for T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::asserts;
+    use crate::{asserts, macro_once};
 
     #[test]
     #[allow(unused_allocation)] // 用于`Box`
@@ -34,17 +34,14 @@ mod tests {
         }
 
         // 大规模测试
-        macro_rules! testset {
-            ($($e:expr $(,)?)*) => {
+        macro_once! {
+            macro testset($($e:expr $(,)?)*) {
                 asserts! {
                     $(
                         format!("{:?}", &$e) => $e.to_debug(),
                     )*
                 }
-            };
-        }
-
-        testset! {
+            }
             1 2 3 4 5 6 7 8 9 10,
             (1, 2), [1, 2, 3],
             (1, 2, (1, 2)),

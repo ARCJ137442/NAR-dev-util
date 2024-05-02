@@ -1,6 +1,8 @@
 //! 「作为静态字串引用」
 //! * 🎯用于各种【需要兼容`String`、`&str`、`&String`到`&str`】的场景
 
+use crate::macro_once;
+
 /// 将自身转换为 `&str`
 /// * 🎯用来表达类似TypeScript`String | str | &String | &str | ...`的语义
 ///   * 用来统一兼容各种字符串类型
@@ -14,9 +16,9 @@ pub trait AsStrRef {
     /// * 🎯不管自己是什么类型，反正内容都一样，就一定能转换成`&str`
     fn as_str_ref(&self) -> &str;
 }
-/// 批量实现上述特征的宏
-macro_rules! impl_as_str_ref {
-    ($( $t: ty $(,)? )*) => {
+macro_once! {
+    /// 批量实现上述特征的宏
+    macro impl_as_str_ref($( $t: ty $(,)? )*) {
         $(
             /// ! 兼容各路类型转换到`&str`
             impl AsStrRef for $t {
@@ -25,9 +27,7 @@ macro_rules! impl_as_str_ref {
                 }
             }
         )*
-    };
-}
-impl_as_str_ref! {
+    }
     String,
     &String,
     &&String,
