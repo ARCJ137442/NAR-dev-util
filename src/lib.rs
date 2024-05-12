@@ -47,3 +47,9 @@ pub use str_processing::*;
 mod enum_union;
 #[cfg(feature = "enum_union")]
 pub use enum_union::*;
+
+// [`Void`]特性
+#[cfg(feature = "void")]
+mod void;
+#[cfg(feature = "void")]
+pub use void::*;
