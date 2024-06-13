@@ -2402,3 +2402,65 @@ macro_rules! macro_once {
         }
     };
 }
+
+/// 匹配某个值，或返回另一个值
+/// * 🎯缩减某些`match x {a => b, _ => c}`的模板代码
+/// * 🎯便于对[`Option`]操作：符合某模式返回[`Some`]，不符合返回[`None`]
+///
+/// ```rust
+/// use nar_dev_utils::matches_or;
+/// // 普通二元形式：匹配返回result，否则返回or_else
+/// let g = |a| matches_or!(a, i @ 1.. => [i+1], [0]);
+/// assert_eq!(g(1), [2]);
+/// assert_eq!(g(2), [3]);
+/// assert_eq!(g(3), [4]);
+/// assert_eq!(g(0), [0]);
+/// assert_eq!(matches_or!(1, 1 => 1, 2), 1);
+/// assert_eq!(matches_or!(2, 1 => 1, 2), 2);
+/// assert_eq!(matches_or!(Some(1), None => 1, 2), 2);
+/// assert_eq!(matches_or!((1, 2, 3), (.., 3) => 1, 2), 1);
+///
+/// // Option二元形式：匹配返回指定代码，不匹配返回None
+/// assert_eq!(matches_or!(?[2, 2], [1..=2, _] => 1), Some(1));
+/// assert_eq!(matches_or!(?[2, 2], [.., 1] | [1, ..] => 1), None);
+///
+/// // 一般多元形式
+/// let f = |a| {
+///     matches_or! {
+///         a,
+///         (1, 2, 3) => 1,
+///         (1, 2, 4) => 2,
+///         (1, 2, 5) => 3;
+///         0
+///     }
+/// };
+/// assert_eq!(f((1, 2, 3)), 1);
+/// assert_eq!(f((1, 2, 4)), 2);
+/// assert_eq!(f((1, 2, 5)), 3);
+/// assert_eq!(f((0, 0, 0)), 0);
+/// ```
+#[macro_export]
+macro_rules! matches_or {
+    // 普通二元形式：匹配返回result，否则返回or_else
+    ($ex:expr, $pat:pat => $result:expr, $or_else:expr) => {
+        match $ex {
+            $pat => $result,
+            _ => $or_else,
+        }
+    };
+    // Option二元形式：匹配返回Some($some_value)，不匹配返回None
+    (? $ex:expr, $($pat:pat => $some_value:expr),* $(,)?) => {
+        match $ex {
+            $($pat => Some($some_value),)*
+            _ => None,
+        }
+    };
+    // 一般多元形式
+    // ! 📝需要在最后使用分号区隔，不然会造成「本地歧义」
+    ($ex:expr, $($pat:pat => $result:expr),*; $($rest:tt)*) => {
+        match $ex {
+            $($pat => $result,)*
+            _ => $($rest)*,
+        }
+    };
+}
