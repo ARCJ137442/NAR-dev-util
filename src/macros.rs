@@ -2416,9 +2416,10 @@ macro_rules! macro_once {
 /// assert_eq!(g(3), [4]);
 /// assert_eq!(g(0), [0]);
 /// assert_eq!(matches_or!(1, 1 => 1, 2), 1);
-/// assert_eq!(matches_or!(2, 1 => 1, 2), 2);
+/// assert_eq!(matches_or!(2, x if x < 1 => 1, 2), 2);
 /// assert_eq!(matches_or!(Some(1), None => 1, 2), 2);
 /// assert_eq!(matches_or!((1, 2, 3), (.., 3) => 1, 2), 1);
+/// assert_eq!(matches_or!((1, 2, 3), (.., x) if x > 3 => 1, 2), 2);
 ///
 /// // Option二元形式：匹配返回指定代码，不匹配返回None
 /// assert_eq!(matches_or!(?[2, 2], [1..=2, _] => 1), Some(1));
@@ -2442,24 +2443,24 @@ macro_rules! macro_once {
 #[macro_export]
 macro_rules! matches_or {
     // 普通二元形式：匹配返回result，否则返回or_else
-    ($ex:expr, $pat:pat => $result:expr, $or_else:expr) => {
+    ($ex:expr, $pat:pat $(if $guard:expr)? => $result:expr, $or_else:expr) => {
         match $ex {
-            $pat => $result,
+            $pat $(if $guard)? => $result,
             _ => $or_else,
         }
     };
     // Option二元形式：匹配返回Some($some_value)，不匹配返回None
-    (? $ex:expr, $($pat:pat => $some_value:expr),* $(,)?) => {
+    (? $ex:expr, $($pat:pat $(if $guard:expr)? => $some_value:expr),* $(,)?) => {
         match $ex {
-            $($pat => Some($some_value),)*
+            $($pat $(if $guard)? => Some($some_value),)*
             _ => None,
         }
     };
     // 一般多元形式
     // ! 📝需要在最后使用分号区隔，不然会造成「本地歧义」
-    ($ex:expr, $($pat:pat => $result:expr),*; $($rest:tt)*) => {
+    ($ex:expr, $($pat:pat $(if $guard:expr)? => $result:expr),*; $($rest:tt)*) => {
         match $ex {
-            $($pat => $result,)*
+            $($pat $(if $guard)? => $result,)*
             _ => $($rest)*,
         }
     };
