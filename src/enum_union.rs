@@ -152,7 +152,7 @@ macro_rules! enum_union {
             /// * 🚩利用批量实现的`is_variant_type_of`方法
             #[allow(non_camel_case_types)] // ! 使用`r#type`尽可能避免名称占用
             pub fn is_variant<r#type>(&self) -> bool
-                where r#type: VariantTypeOf<Self>
+                where r#type: $crate::VariantTypeOf<Self>
             {
                 r#type::is_variant_type_of(self)
             }
@@ -179,9 +179,9 @@ macro_rules! enum_union {
             #[allow(non_camel_case_types)]
             pub fn try_into_variant<r#type>(self) -> Option<r#type>
                 // * ↓此处需要如此约束
-                where r#type: VariantTypeOf<Self>
+                where r#type: $crate::VariantTypeOf<Self>
             {
-                VariantTypeOf::<Self>::try_from_variant(self)
+                $crate::VariantTypeOf::<Self>::try_from_variant(self)
             }
         }
     };
@@ -223,7 +223,7 @@ macro_rules! enum_union {
         //     }
         // }
 
-        impl < $($generics_self)* > $crate::enum_union::VariantTypeOf<$name < $($generics_self)* > > for $variant < $($generics)* > {
+        impl < $($generics_self)* > $crate::VariantTypeOf<$name < $($generics_self)* > > for $variant < $($generics)* > {
             fn is_variant_type_of(union_value: &$name < $($generics_self)* > ) -> bool {
                 matches!(union_value, $name::$variant(..))
             }
@@ -246,9 +246,7 @@ macro_rules! enum_union {
 /// 单元测试
 #[cfg(test)]
 mod tests {
-    // #![allow(unused)]
-    use super::*;
-    use crate::*;
+    use crate::asserts;
     use std::collections::HashSet;
 
     /// 测试/普通`enum`语法
@@ -272,6 +270,7 @@ mod tests {
         let i2: Int = 32_i32.into();
 
         // 测试
+        use crate::VariantTypeOf;
         asserts! {
             // 判断其变种
             i.is_variant::<i32>(),
