@@ -2403,7 +2403,7 @@ macro_rules! macro_once {
     };
 }
 
-/// 匹配某个值，或返回另一个值
+/// # 匹配某个值，或返回另一个值
 /// * 🎯缩减某些`match x {a => b, _ => c}`的模板代码
 /// * 🎯便于对[`Option`]操作：符合某模式返回[`Some`]，不符合返回[`None`]
 ///
@@ -2462,6 +2462,76 @@ macro_rules! matches_or {
         match $ex {
             $($pat $(if $guard)? => $result,)*
             _ => $($rest)*,
+        }
+    };
+}
+
+/// # 解包或返回
+/// * 📝类似Rust自带的`?`语法，支持在[`None`]/[`Err`]时返回不同的值
+/// * ✨允许将类似`?`语法用在非[`Option`]/[`Result`]的函数环境中
+///
+/// ## 用例
+///
+/// ```
+/// use nar_dev_utils::unwrap_or_return;
+/// /// 用例1 @ `Option<T>`
+/// fn f() -> Option<usize> {
+///     // 解包`Some`
+///     let option = Some(1);
+///     let a = unwrap_or_return!(?option);
+///     assert_eq!(a, 1);
+///     // 解包`None` | ✅支持返回其它的默认值
+///     let option = None;
+///     unwrap_or_return!(?option => Some(0));
+///     // 最终不可达
+///     unreachable!("因为对Err解包提前返回，故此处代码不可达")
+/// }
+/// assert_eq!(f(), Some(0));
+///
+/// /// 用例2 @ `Result<T,E>`
+/// fn g(err_default: impl FnOnce(usize) -> usize) -> Result<i32, usize> {
+///     // 解包`Ok`
+///     let result = Ok(1);
+///     let a = unwrap_or_return!(@result);
+///     assert_eq!(a, 1);
+///     // 解包`Err` | ✅支持返回其它的默认值
+///     let result = Err(2);
+///     unwrap_or_return!(@result, x => Err(err_default(x)));
+///     // 最终不可达
+///     unreachable!("因为对Err解包提前返回，故此处代码不可达")
+/// }
+/// assert_eq!(g(|x| x + 1), Err(2 + 1));
+///
+/// /// 用例3 @ 非`Option`/`Result`环境
+/// fn h(x: Option<usize>, default: usize) -> usize {
+///     // 解包Some，对None返回默认值
+///     let result = unwrap_or_return!(?x => default);
+///     result + 1
+/// }
+/// assert_eq!(h(Some(1), 0), 1 + 1);
+/// assert_eq!(h(Some(2), 0), 2 + 1);
+/// assert_eq!(h(None, 0), 0);
+/// assert_eq!(h(None, 1), 1);
+/// ```
+#[macro_export]
+#[doc(alias = "try_unwrap")]
+macro_rules! unwrap_or_return {
+    (? $option:expr) => {
+        $crate::unwrap_or_return!(? $option => None)
+    };
+    (? $option:expr => $default:expr) => {
+        match $option {
+            Some(x) => x,
+            None => return $default.into(),
+        }
+    };
+    (@ $result:expr) => {
+        $crate::unwrap_or_return!(@ $result, value => Err(value))
+    };
+    (@ $result:expr, $err:pat => $default:expr) => {
+        match $result {
+            Ok(x) => x,
+            Err($err) => return $default,
         }
     };
 }
