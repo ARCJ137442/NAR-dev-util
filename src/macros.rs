@@ -2484,7 +2484,7 @@ macro_rules! matches_or {
 ///     let option = None;
 ///     unwrap_or_return!(?option => Some(0));
 ///     // 最终不可达
-///     unreachable!("因为对Err解包提前返回，故此处代码不可达")
+///     unreachable!("因为对None解包提前返回，故此处代码不可达")
 /// }
 /// assert_eq!(f(), Some(0));
 ///
@@ -2501,6 +2501,7 @@ macro_rules! matches_or {
 ///     unreachable!("因为对Err解包提前返回，故此处代码不可达")
 /// }
 /// assert_eq!(g(|x| x + 1), Err(2 + 1));
+/// assert_eq!(g(|x| x - 2), Err(0));
 ///
 /// /// 用例3 @ 非`Option`/`Result`环境
 /// fn h(x: Option<usize>, default: usize) -> usize {
