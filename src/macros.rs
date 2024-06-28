@@ -2474,11 +2474,12 @@ macro_rules! matches_or {
 ///
 /// ```
 /// use nar_dev_utils::unwrap_or_return;
+///
 /// /// 用例1 @ `Option<T>`
 /// fn f() -> Option<usize> {
 ///     // 解包`Some`
 ///     let option = Some(1);
-///     let a = unwrap_or_return!(?option);
+///     let a = unwrap_or_return!(?option => None); // 等价于`option?`
 ///     assert_eq!(a, 1);
 ///     // 解包`None` | ✅支持返回其它的默认值
 ///     let option = None;
@@ -2492,7 +2493,7 @@ macro_rules! matches_or {
 /// fn g(err_default: impl FnOnce(usize) -> usize) -> Result<i32, usize> {
 ///     // 解包`Ok`
 ///     let result = Ok(1);
-///     let a = unwrap_or_return!(@result);
+///     let a = unwrap_or_return!(@result, x => Err(x)); // 使用`result?`则会出现「类型不明确」错误
 ///     assert_eq!(a, 1);
 ///     // 解包`Err` | ✅支持返回其它的默认值
 ///     let result = Err(2);
@@ -2504,31 +2505,131 @@ macro_rules! matches_or {
 /// assert_eq!(g(|x| x - 2), Err(0));
 ///
 /// /// 用例3 @ 非`Option`/`Result`环境
-/// fn h(x: Option<usize>, default: usize) -> usize {
+/// fn h1(x: Option<usize>, default: usize) -> usize {
 ///     // 解包Some，对None返回默认值
 ///     let result = unwrap_or_return!(?x => default);
 ///     result + 1
 /// }
-/// assert_eq!(h(Some(1), 0), 1 + 1);
-/// assert_eq!(h(Some(2), 0), 2 + 1);
-/// assert_eq!(h(None, 0), 0);
-/// assert_eq!(h(None, 1), 1);
+/// assert_eq!(h1(Some(1), 0), 1 + 1);
+/// assert_eq!(h1(Some(2), 0), 2 + 1);
+/// assert_eq!(h1(None, 0), 0);
+/// assert_eq!(h1(None, 1), 1);
+///
+/// /// 用例4 @ 非`Option`/`Result`环境
+/// fn h2(counter: &mut usize, x: Option<usize>, y: Result<usize, ()>, z: usize) {
+///     // 尝试解包x并将其附加于counter
+///     let x = unwrap_or_return!(?x);
+///     *counter += x;
+///     // 尝试解包y并将其附加于counter
+///     let y = unwrap_or_return!(@y);
+///     *counter += y;
+///     // 最终加上z
+///     *counter += z;
+/// }
+/// let mut counter = 0;
+/// h2(&mut counter, Some(1), Ok(1), 1); // +3
+/// assert_eq!(counter, 3);
+/// h2(&mut counter, Some(1), Ok(1), 0); // +2
+/// assert_eq!(counter, 5);
+/// h2(&mut counter, Some(1), Err(()), 1); // +1
+/// assert_eq!(counter, 6);
+/// h2(&mut counter, None, Ok(1), 1); // +0
+/// assert_eq!(counter, 6);
+///
+/// /// 用例5 @ 控制流 `break (value)`
+/// fn sum_len(vec: impl Into<Vec<usize>>) -> (usize, usize) {
+///     let mut vec = vec.into();
+///     let mut sum = 0;
+///     let mut len = 0;
+///     loop {
+///         sum += unwrap_or_return!(
+///             ?vec.pop() // 弹出元素
+///             => break (sum, len) // 没了⇒返回(总和, 长度)
+///         );
+///         len += 1;
+///     }
+/// }
+/// assert_eq!(sum_len([]), (0, 0));
+/// assert_eq!(sum_len([1, 2, 3]), (6, 3));
+/// assert_eq!(sum_len([1, 1, 1]), (3, 3));
+/// assert_eq!(sum_len([3, 3]), (6, 2));
+/// assert_eq!(sum_len([2, 2, 2]), (6, 3));
+///
+/// /// 用例5 @ 控制流 `continue`
+/// fn flat_options(vec: impl Into<Vec<Option<usize>>>) -> Vec<usize> {
+///     let mut vec = vec.into();
+///     let mut result = vec![];
+///     loop {
+///         // * 🚩从数组中取出最后一个元素，若空则返回结果
+///         let option = unwrap_or_return!(?vec.pop() => break result);
+///         // * 🚩从元素中解包出value，若无则跳到下一个
+///         let value = unwrap_or_return!(?option => continue);
+///         // * 🚩添加元素
+///         result.push(value);
+///     }
+/// }
+/// assert_eq!(flat_options([]), []);
+/// assert_eq!(flat_options([Some(1)]), [1]);
+/// assert_eq!(flat_options([Some(1), None]), [1]);
+/// assert_eq!(flat_options([Some(1), None, None]), [1]);
+/// assert_eq!(flat_options([Some(1), None, None, Some(2)]), [2, 1]);
+/// assert_eq!(flat_options([Some(2), None, None, Some(1)]), [1, 2]);
+/// assert_eq!(flat_options([Some(2), None, Some(1), None]), [1, 2]);
+/// assert_eq!(flat_options([Some(2), Some(1), None, None]), [1, 2]);
+/// assert_eq!(flat_options([Some(2), None, Some(1), Some(0)]), [0, 1, 2]);
+/// assert_eq!(flat_options([Some(2), Some(0), None, Some(1)]), [1, 0, 2]);
 /// ```
 #[macro_export]
 #[doc(alias = "try_unwrap")]
 macro_rules! unwrap_or_return {
+    // * 🚩默认：等同于`None => return`
     (? $option:expr) => {
-        $crate::unwrap_or_return!(? $option => None)
+        // ! 💥【2024-06-28 16:32:46】破坏性修改：现在返回`()`而非`None`
+        // * 📝`None`已有`?`语法替代
+        $crate::unwrap_or_return!(? $option => ())
     };
+    // * 🚩特殊 @ continue // `return continue`无良好语义
+    (? $option:expr => continue) => {
+        match $option {
+            Some(x) => x,
+            None => continue,
+        }
+    };
+    // * 🚩特殊 @ break // `return break`无良好语义
+    (? $option:expr => break $default:expr) => {
+        match $option {
+            Some(x) => x,
+            None => break $default,
+        }
+    };
+    // * 🚩对一般`Option`，在`?`的基础上允许自定义返回值
     (? $option:expr => $default:expr) => {
         match $option {
             Some(x) => x,
             None => return $default.into(),
         }
     };
+    // * 🚩默认：等同于`Err(..) => return`
     (@ $result:expr) => {
-        $crate::unwrap_or_return!(@ $result, value => Err(value))
+        // ! 💥【2024-06-28 16:32:46】破坏性修改：现在返回`()`而非`Err(value)`
+        // * 📝`Err(value)`已有`?`语法替代
+        $crate::unwrap_or_return!(@ $result, .. => ())
     };
+    // * 🚩特殊 @ continue
+    (@ $result:expr => continue) => {
+        match $result {
+            Ok(x) => x,
+            Err(..) => continue,
+        }
+    };
+    // * 🚩特殊 @ break // `return break`无良好语义
+    (@ $result:expr, $err:pat => break $default:expr) => {
+        match $result {
+            Ok(x) => x,
+            Err($err) => break $default,
+        }
+    };
+    // * 🚩对一般`Result`，在`?`的基础上允许自定义返回值
     (@ $result:expr, $err:pat => $default:expr) => {
         match $result {
             Ok(x) => x,
