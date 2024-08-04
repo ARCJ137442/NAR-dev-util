@@ -2556,7 +2556,7 @@ macro_rules! matches_or {
 /// assert_eq!(sum_len([2, 2, 2]), (6, 3));
 ///
 /// /// 用例5 @ 控制流 `continue`
-/// fn flat_options(vec: impl Into<Vec<Option<usize>>>) -> Vec<usize> {
+/// fn flat_options_rev(vec: impl Into<Vec<Option<usize>>>) -> Vec<usize> {
 ///     let mut vec = vec.into();
 ///     let mut result = vec![];
 ///     loop {
@@ -2568,16 +2568,50 @@ macro_rules! matches_or {
 ///         result.push(value);
 ///     }
 /// }
-/// assert_eq!(flat_options([]), []);
-/// assert_eq!(flat_options([Some(1)]), [1]);
-/// assert_eq!(flat_options([Some(1), None]), [1]);
-/// assert_eq!(flat_options([Some(1), None, None]), [1]);
-/// assert_eq!(flat_options([Some(1), None, None, Some(2)]), [2, 1]);
-/// assert_eq!(flat_options([Some(2), None, None, Some(1)]), [1, 2]);
-/// assert_eq!(flat_options([Some(2), None, Some(1), None]), [1, 2]);
-/// assert_eq!(flat_options([Some(2), Some(1), None, None]), [1, 2]);
-/// assert_eq!(flat_options([Some(2), None, Some(1), Some(0)]), [0, 1, 2]);
-/// assert_eq!(flat_options([Some(2), Some(0), None, Some(1)]), [1, 0, 2]);
+/// assert_eq!(flat_options_rev([]), []);
+/// assert_eq!(flat_options_rev([Some(1)]), [1]);
+/// assert_eq!(flat_options_rev([Some(1), None]), [1]);
+/// assert_eq!(flat_options_rev([Some(1), None, None]), [1]);
+/// assert_eq!(flat_options_rev([Some(1), None, None, Some(2)]), [2, 1]);
+/// assert_eq!(flat_options_rev([Some(2), None, None, Some(1)]), [1, 2]);
+/// assert_eq!(flat_options_rev([Some(2), None, Some(1), None]), [1, 2]);
+/// assert_eq!(flat_options_rev([Some(2), Some(1), None, None]), [1, 2]);
+/// assert_eq!(flat_options_rev([Some(2), None, Some(1), Some(0)]), [0, 1, 2]);
+/// assert_eq!(flat_options_rev([Some(2), Some(0), None, Some(1)]), [1, 0, 2]);
+///
+/// /// 用例6 @ 分立控制流 `break 'block`
+/// fn flat_option_pairs<T>(iter: impl IntoIterator<Item = [Option<T>; 2]>) -> Vec<T> {
+///     let mut result = vec![];
+///     for [x, y] in iter {
+///         // * 🚩试着拿出第一个非空元素
+///         'x: {
+///             // * 🚩从元素中解包出value，若无则不做操作
+///             let value = unwrap_or_return!(?x => break 'x ());
+///             // * 🚩添加元素
+///             result.push(value);
+///         }
+///         // * 🚩试着拿出第二个非空元素
+///         'y: {
+///             // * 🚩从元素中解包出value，若无则不做操作
+///             let value = unwrap_or_return!(?y => break 'y ());
+///             // * 🚩添加元素
+///             result.push(value);
+///         }
+///     }
+///     result
+/// }
+/// let (s, null) = (Some, None);
+/// assert_eq!(flat_option_pairs::<usize>([]), []);
+/// assert_eq!(flat_option_pairs([[s(1), null]]), [1]);
+/// assert_eq!(flat_option_pairs([[null, s(1)]]), [1]);
+/// assert_eq!(flat_option_pairs([[s(1), null], [null, null]]), [1]);
+/// assert_eq!(flat_option_pairs([[null, s(1)], [null, null]]), [1]);
+/// assert_eq!(flat_option_pairs([[s(1), null], [null, s(2)]]), [1, 2]);
+/// assert_eq!(flat_option_pairs([[s(2), null], [null, s(1)]]), [2, 1]);
+/// assert_eq!(flat_option_pairs([[s(2), null], [s(1), null]]), [2, 1]);
+/// assert_eq!(flat_option_pairs([[s(2), s(1)], [null, null]]), [2, 1]);
+/// assert_eq!(flat_option_pairs([[s(2), null], [s(1), s(0)]]), [2, 1, 0]);
+/// assert_eq!(flat_option_pairs([[s(2), s(0)], [null, s(1)]]), [2, 0, 1]);
 /// ```
 #[macro_export]
 #[doc(alias = "try_unwrap")]
@@ -2589,17 +2623,20 @@ macro_rules! unwrap_or_return {
         $crate::unwrap_or_return!(? $option => ())
     };
     // * 🚩特殊 @ continue // `return continue`无良好语义
-    (? $option:expr => continue) => {
+    (? $option:expr => continue $($code:tt)*) => {
         match $option {
             Some(x) => x,
-            None => continue,
+            None => continue $($code)*,
         }
     };
     // * 🚩特殊 @ break // `return break`无良好语义
-    (? $option:expr => break $default:expr) => {
+    // ! ❌【2024-08-04 22:31:39】无法对break使用标签：本地歧义
+    //   * 📄原代码：`(? $option:expr => break $($scope:lifetime)? $default:expr) => {`
+    //   * ℹ️报错信息：`multiple parsing options: built-in NTs lifetime ('scope') or expr ('default').`
+    (? $option:expr => break $($code:tt)*) => {
         match $option {
             Some(x) => x,
-            None => break $default,
+            None => break $($code)*,
         }
     };
     // * 🚩对一般`Option`，在`?`的基础上允许自定义返回值
@@ -2616,17 +2653,17 @@ macro_rules! unwrap_or_return {
         $crate::unwrap_or_return!(@ $result, .. => ())
     };
     // * 🚩特殊 @ continue
-    (@ $result:expr => continue) => {
+    (@ $result:expr => continue $($code:tt)*) => {
         match $result {
             Ok(x) => x,
-            Err(..) => continue,
+            Err(..) => continue $($code)*,
         }
     };
     // * 🚩特殊 @ break // `return break`无良好语义
-    (@ $result:expr, $err:pat => break $default:expr) => {
+    (@ $result:expr, $err:pat => break $($code:tt)*) => {
         match $result {
             Ok(x) => x,
-            Err($err) => break $default,
+            Err($err) => break $($code)*,
         }
     };
     // * 🚩对一般`Result`，在`?`的基础上允许自定义返回值

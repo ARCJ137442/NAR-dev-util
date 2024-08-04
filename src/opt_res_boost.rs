@@ -237,7 +237,7 @@ mod test {
 
         asserts! {
             // Ok用例
-            is_even_of_text("1") => Ok(false)
+            is_even_of_text("1") => Ok(false),
             is_even_of_text("0") => Ok(true),
             // Err用例
             is_even_of_text("err") => Err("invalid digit found in string".into()),
