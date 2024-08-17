@@ -18,3 +18,7 @@ pub use x_fix_match::*;
 // join
 pub mod join;
 pub use join::*;
+
+// 带所有权拆分
+pub mod split_owned;
+pub use split_owned::*;
