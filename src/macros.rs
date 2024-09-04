@@ -2723,3 +2723,174 @@ macro_rules! unwrap_or_return {
         }
     };
 }
+
+/// 一次性特征结构
+/// * 🎯构建一个【一次性】结构体，根据特征定义实现所需求的功能（并在后续传入参数）
+///   * 🚩先定义`struct`，再`impl`指定特征，最后产生一个**可变引用**`&mut X`
+///     * 📌【2024-09-04 11:34:41】采用可变引用的原因：
+///       * 一般无需所有权：临时上下文一般不传入所有权，传入所有权则难以复用
+///       * 兼容不可变引用：对临时上下文结构的可变引用能通过「点号调用」自动转换为不可变引用
+/// * 🎯相比「多个闭包」，规避部分借用问题
+///   * 📄`call(|| self.get(X), |x, y| self.set(x, y))` => `call(context)`
+/// * 📌【2024-09-04 01:08:51】目前不提供「一次性实现的`enum`」
+///   * 💭理由：极少见，一般用`struct`足以胜任大多场景
+/// * 📌【2024-09-04 10:52:26】兼容泛型，但不推荐使用
+///   * 📝一般而言，在具体产生上下文时，均能得到其中的类型信息
+///   * 🚧目前不兼容太复杂的泛型用法
+///
+/// ## 使用语法
+///
+/// ```ignore
+/// impl_once! {
+///     struct 【临时结构体名】 （in 【生命周期参数】） {
+///         【字段名】 : 【字段类型】 = 【字段值】,
+///     } impl 【实现的特征】 {
+///         【实现用代码】
+///     }
+/// }
+/// ```
+///
+/// ## 使用示例
+///
+/// ```rust
+/// use nar_dev_utils::impl_once;
+
+/// use std::collections::HashMap;
+///
+/// trait Context<K, V> {
+///     fn get(&self, key: &K) -> Option<V>;
+///     fn set(&mut self, key: &K, value: V);
+/// }
+///
+/// /// 使用上下文的函数
+/// fn inc_or_one<K>(context: &mut impl Context<K, usize>, key: &K) {
+///     let value = context.get(key).map_or(1, |value| value + 1);
+///     context.set(key, value);
+/// }
+///
+/// // * 🚩示例结构：散列映射
+/// let mut map: HashMap<String, usize> = HashMap::new();
+///
+/// // * 🚩建立上下文，可重复使用
+/// let context = impl_once! {
+///     struct MapRef in 'a {
+///         map: &'a mut HashMap<String, usize> = &mut map,
+///     } impl Context<String, usize> {
+///         fn get(&self, key: &String) -> Option<usize> {
+///             self.map.get(key).copied()
+///         }
+///
+///         fn set(&mut self, key: &String, value: usize) {
+///             self.map.insert(key.clone(), value);
+///         }
+///     }
+/// };
+///
+/// // 新建
+/// let key = "key".to_string();
+/// inc_or_one(context, &key);
+///
+/// // 新建+递增
+/// let key2 = "key2".to_string();
+/// inc_or_one(context, &key2);
+/// inc_or_one(context, &key2);
+///
+/// // 抛掉上下文，测试
+/// assert_eq!(map.get(&key), Some(&1));
+/// assert_eq!(map.get(&key2), Some(&2));
+///
+/// // * 🚩示例结构2：动态数组
+/// let mut vec: Vec<usize> = vec![];
+///
+/// // * 🚩建立上下文，可重复使用
+/// let context = impl_once! {
+///     struct VecRef in 'a {
+///         vec: &'a mut Vec<usize> = &mut vec,
+///     } impl Context<usize, usize> {
+///         fn get(&self, key: &usize) -> Option<usize> {
+///             self.vec.get(*key).copied()
+///         }
+///
+///         fn set(&mut self, key: &usize, value: usize) {
+///             // 预先扩容
+///             while self.vec.len() <= *key {
+///                 self.vec.push(0);
+///             }
+///             // 设置值
+///             self.vec[*key] = value;
+///         }
+///     }
+/// };
+///
+/// // 新建
+/// inc_or_one(context, &0);
+///
+/// // 新建+扩容+递增
+/// inc_or_one(context, &2);
+/// inc_or_one(context, &2);
+///
+/// // 抛掉上下文，测试
+/// assert_eq!(vec, [1, 0, 2]);
+/// ```
+#[macro_export]
+macro_rules! impl_once {
+    ( // 无泛型：转发
+        $(#[$attr:meta])*
+        struct $name:ident $(in $life:lifetime)? {
+            $(
+                $field_name:ident : $field_type:ty = $field_value:expr $(,)?
+            )*
+        }
+        $(#[$attr_impl:meta])*
+        impl $trait:ty {
+            $($trait_body:tt)*
+        }
+    ) => {
+        impl_once! {
+            $(#[$attr])*
+            struct $name [ $($life)? ] {
+                $(
+                    $field_name : $field_type = $field_value
+                )*
+            }
+            $(#[$attr_impl])*
+            impl $trait {
+                $($trait_body)*
+            }
+        }
+    };
+    ( // 有泛型：具体展开
+        $(#[$attr:meta])*
+        struct $name:ident [ $($generics:tt)* ] {
+            $(
+                $field_name:ident : $field_type:ty = $field_value:expr $(,)?
+            )*
+        }
+        $(#[$attr_impl:meta])*
+        impl $trait:ty {
+            $($trait_body:tt)*
+        }
+    ) => {
+        { // * 📌整体是一个块表达式
+            $(#[$attr])*
+            // * 🚩针对功能定义一个结构体
+            struct $name <$($generics)*> {
+                $(
+                    $field_name : $field_type,
+                )*
+            }
+            $(#[$attr_impl])*
+            // * 🚩实现功能
+            impl <$($generics)*> $trait for $name <$($generics)*> {
+                $($trait_body)*
+            }
+            // * 🚩构建并载入上下文，拿到独占引用
+            //   * 📌【2024-09-04 01:16:25】目前总是取可变引用：后续使用时可根据「点方法」灵活调用
+            &mut $name {
+                $(
+                    $field_name : $field_value,
+                )*
+            }
+        }
+    };
+}
