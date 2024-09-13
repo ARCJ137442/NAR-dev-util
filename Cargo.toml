@@ -1,6 +1,6 @@
 [package]
 name = "nar_dev_utils"
-version = "0.40.0"
+version = "0.41.0"
 description = "用于NARS相关项目开发的实用工具包"
 authors = ["Argon (ARCJ137442)"]
 edition = "2021"

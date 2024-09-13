@@ -2754,7 +2754,6 @@ macro_rules! unwrap_or_return {
 ///
 /// ```rust
 /// use nar_dev_utils::impl_once;
-
 /// use std::collections::HashMap;
 ///
 /// trait Context<K, V> {
@@ -2891,6 +2890,70 @@ macro_rules! impl_once {
                     $field_name : $field_value,
                 )*
             }
+        }
+    };
+}
+
+/// [`print`] @ 调试阶段
+/// * 🎯仅在调试模式下打印输出
+///   * 📄单元测试
+///   * 📄debug
+/// * 🔗参考@条件编译：<https://doc.rust-lang.org/reference/conditional-compilation.html>
+/// * 🔗类似[`debug_assert`]、[`debug_assert_eq`]等宏
+/// * ⚠️【2024-09-13 16:28:53】目前未找到有效方法为此类宏编写测试
+#[macro_export]
+macro_rules! debug_print {
+    ($($arg:tt)*) => {
+        if cfg!(debug_assertions) {
+            print!($($arg)*);
+        }
+    };
+}
+
+/// [`eprint`] @ 调试阶段（stderr）
+/// * 🎯仅在调试模式下打印输出到标准错误流
+///   * 📄单元测试
+///   * 📄debug
+/// * 🔗参考@条件编译：<https://doc.rust-lang.org/reference/conditional-compilation.html>
+/// * 🔗类似[`debug_assert`]、[`debug_assert_eq`]等宏
+/// * ⚠️【2024-09-13 16:28:53】目前未找到有效方法为此类宏编写测试
+#[macro_export]
+macro_rules! debug_eprint {
+    ($($arg:tt)*) => {
+        if cfg!(debug_assertions) {
+            eprint!($($arg)*);
+        }
+    };
+}
+
+/// [`println`] @ 调试阶段
+/// * 🎯仅在调试模式下打印输出
+///   * 📄单元测试
+///   * 📄debug
+/// * 🔗参考@条件编译：<https://doc.rust-lang.org/reference/conditional-compilation.html>
+/// * 🔗类似[`debug_assert`]、[`debug_assert_eq`]等宏
+/// * ⚠️【2024-09-13 16:28:53】目前未找到有效方法为此类宏编写测试
+#[macro_export]
+macro_rules! debug_println {
+    ($($arg:tt)*) => {
+        if cfg!(debug_assertions) {
+            println!($($arg)*);
+        }
+    };
+}
+
+/// [`eprintln`] @ 调试阶段（stderr）
+/// * 🎯仅在调试模式下打印输出到标准错误流
+///   * 📄单元测试
+///   * 📄debug
+/// * 🔗参考@条件编译：<https://doc.rust-lang.org/reference/conditional-compilation.html>
+/// * 🔗类似[`debug_assert`]、[`debug_assert_eq`]等宏
+/// * ⚠️【2024-09-13 16:28:53】目前未找到有效方法为此类宏编写测试
+#[macro_export]
+macro_rules! debug_eprintln {
+    ($($arg:tt)*) => {
+        if cfg!(debug_assertions) {
+            eprintln!($($arg)*);
         }
     };
 }
