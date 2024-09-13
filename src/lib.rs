@@ -32,6 +32,8 @@ feature_pub_mod_and_reexport! {
     // [`Option`][`Result`]增强
     "opt_res_boost" => opt_res_boost
 
+    // 「引用计数」功能接口
+    "rc" => rc
 }
 
 // 其它模块 //
