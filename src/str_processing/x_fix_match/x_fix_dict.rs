@@ -83,7 +83,7 @@ impl PrefixMatchDict {
     /// 搜索 | 使用二分查找
     /// * 🎯构造可方便替换的「查找」逻辑
     /// * 🚩找到⇒位置，没找到⇒应该插入的位置
-    #[cfg(feature = "algorithms")]
+    #[cfg(feature = "vec_tools")]
     #[inline(always)]
     pub fn search(&self, x_fix: &XFix) -> Result<usize, usize> {
         use crate::binary_search;
@@ -93,7 +93,7 @@ impl PrefixMatchDict {
     /// 搜索 | 使用线性查找
     /// * 🎯构造可方便替换的「查找」逻辑
     /// * 🚩找到⇒位置，没找到⇒应该插入的位置
-    #[cfg(not(feature = "algorithms"))]
+    #[cfg(not(feature = "vec_tools"))]
     #[inline(always)]
     pub fn search(&self, x_fix: &XFix) -> Result<usize, usize> {
         // 线性匹配

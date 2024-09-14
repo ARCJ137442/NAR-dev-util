@@ -27,7 +27,7 @@ mod x_fix_dict;
 pub use x_fix_dict::*;
 
 // 前缀匹配
-// * ✨现在内置了「线性查找」的解决方案，模块层面上暂时不需要[`algorithms`]特性了
+// * ✨现在内置了「线性查找」的解决方案，模块层面上暂时不需要[`vec_tools`]特性了
 mod prefix_match;
 pub use prefix_match::*;
 

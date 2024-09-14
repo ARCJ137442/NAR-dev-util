@@ -12,8 +12,10 @@ license = "MIT OR Apache-2.0"
 categories = [] # 🔗<https://crates.io/category_slugs>
 repository = "https://github.com/ARCJ137442/NAR-dev-utils"
 
+
 [dependencies]
 # ! 【2024-03-13 21:05:56】目前没有任何依赖
+
 
 [features]
 # 默认：关闭所有特性 | 但宏是默认启用的
@@ -53,3 +55,16 @@ enum_union = []
 void = []
 # 「引用计数」功能接口
 rc = []
+
+
+# 有关Clippy的参考：
+# * 🔗<https://doc.rust-lang.org/clippy/configuration.html>
+[lints.clippy]
+
+# 📌【2024-08-25 00:31:01】允许文档注释中出现以下情况
+# ```markdown
+# * 📝这是一个笔记
+# ? 💭这是一个问题
+#   * 📍这是问题下的一个小点
+# ```
+doc_lazy_continuation = "allow"
