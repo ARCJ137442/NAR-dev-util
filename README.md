@@ -1,11 +1,46 @@
 # NAR-dev-util
 
-（最后更新：2024-04-05）
+    ！项目英文文档有待增加
+    ! The English documentation is still not completed
 
-服务于上层`Narsese.rs`、`NAVM.rs`、`BabelNAR.rs`等库的**实用开发工具**集
+🕒最后更新：2024-09-14
+
+<!-- 徽章安排参考：https://daily.dev/blog/readme-badges-github-best-practices#organizing-badges-in-your-readme -->
+
+![License](https://img.shields.io/crates/l/nar_dev_utils?style=for-the-badge&color=ff7043)
+![Code Size](https://img.shields.io/github/languages/code-size/ARCJ137442/NAR-dev-util?style=for-the-badge&color=ff7043)
+![Lines of Code](https://www.aschey.tech/tokei/github.com/ARCJ137442/NAR-dev-util?style=for-the-badge&color=ff7043)
+[![Language](https://img.shields.io/badge/language-Rust-orange?style=for-the-badge&color=ff7043)](https://www.rust-lang.org)
+
+<!-- 面向用户 -->
+
+Cargo状态：
+
+[![crates.io](https://img.shields.io/crates/v/nar_dev_utils?style=for-the-badge)](https://crates.io/crates/nar_dev_utils)
+[![docs.rs](https://img.shields.io/docsrs/narust-158?style=for-the-badge)](https://docs.rs/nar_dev_utils)
+![Recent Downloads](https://img.shields.io/crates/dr/nar_dev_utils?style=for-the-badge)
+![Downloads](https://img.shields.io/crates/d/nar_dev_utils?style=for-the-badge)
+![Crate Size](https://img.shields.io/crates/size/nar_dev_utils?style=for-the-badge)
+
+<!-- 面向开发者 -->
+
+开发状态：
+
+[![CI status](https://img.shields.io/github/actions/workflow/status/ARCJ137442/NAR-dev-util/ci.yml?style=for-the-badge)](https://github.com/ARCJ137442/NAR-dev-util/actions/workflows/ci.yml)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-2.0.0-%23FE5196?style=for-the-badge)](https://conventionalcommits.org)
+![GitHub commits since latest release](https://img.shields.io/github/commits-since/ARCJ137442/NAR-dev-util/latest?style=for-the-badge)
+
+![Created At](https://img.shields.io/github/created-at/ARCJ137442/NAR-dev-util?style=for-the-badge)
+![Last Commit](https://img.shields.io/github/last-commit/ARCJ137442/NAR-dev-util?style=for-the-badge)
+
+## 简介
+
+服务于上层`NAR-dev-util`、`NAVM.rs`、`BabelNAR.rs`等库的**实用开发工具**集
 
 - 🎯提取并统一各个库的`utils`模块（最初用途）
 - 🎯可灵活选用的特性组（默认全部启用，亦可条件选用）
+
+## 主要功能
 
 主要包含如下实用功能：
 
