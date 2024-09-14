@@ -1,6 +1,6 @@
 [package]
 name = "nar_dev_utils"
-version = "0.42.0"
+version = "0.42.1"
 description = "用于NARS相关项目开发的实用工具包"
 authors = ["Argon (ARCJ137442)"]
 edition = "2021"
@@ -10,7 +10,7 @@ keywords = ["utils", "macros"]
 
 license = "MIT OR Apache-2.0"
 categories = [] # 🔗<https://crates.io/category_slugs>
-repository = "https://github.com/ARCJ137442/NAR-dev-util"
+repository = "https://github.com/ARCJ137442/NAR-dev-utils"
 
 [dependencies]
 # ! 【2024-03-13 21:05:56】目前没有任何依赖
