@@ -504,10 +504,9 @@ where
     pub fn skip_when_starts_with(&mut self, pattern: impl Iterator<Item = T>) -> bool {
         let mut c: usize = 0;
         // 使用闭包边迭代边计数（后续用于跳过比对者）
-        if self.starts_with(pattern.map(|v| {
+        if self.starts_with(pattern.inspect(|_| {
             // 边迭代边计数
             c += 1;
-            v
         })) {
             // 使用「缓冲区迭代」跳过比对者
             for _ in 0..c {
@@ -633,9 +632,9 @@ mod tests {
 
         // ! 尽可能不要尝试在「开始迭代前」获取「头索引」
         asserts! {
-            iter.head() => 0 // 此时头索引为`0`（但实际上是「未开始迭代」的状态）
-            iter.is_began() => false // 还没开始迭代
-            iter.is_ended() => false // 还没终止迭代
+            iter.head() => 0, // 此时头索引为`0`（但实际上是「未开始迭代」的状态）
+            iter.is_began() => false, // 还没开始迭代
+            iter.is_ended() => false, // 还没终止迭代
             iter.len_buffer() => 0, // 此时缓冲区长度为`0`
             iter.is_buffer_empty(), // 此时缓冲区为空
             iter.buffer_head() => 1 // 此时缓冲区头索引为`1`
@@ -672,9 +671,9 @@ mod tests {
         let b = iter.buffer_next();
 
         asserts! {
-            b => Some('b') // 此时没有缓存了，所以迭代出了新字符
-            iter.head() => 1 // 此时头索引步进到`1`
-            iter.is_began() => true // 此时已开始迭代
+            b => Some('b'), // 此时没有缓存了，所以迭代出了新字符
+            iter.head() => 1, // 此时头索引步进到`1`
+            iter.is_began() => true, // 此时已开始迭代
             iter.is_ended() => false, // 此时仍未结束
             iter.is_buffer_empty(), // 此时缓冲区为空（本来为空，此时还是空）
             iter.len_buffer() => 0 // 此时缓冲区长度为`0`
@@ -728,7 +727,7 @@ mod tests {
         let none = iter.head_next();
 
         asserts! {
-            none => None // 已经没有可迭代的了
+            none => None, // 已经没有可迭代的了
             iter.head() => 3, // 此时头索引不变
             iter.is_began() // 此时已开始迭代
             iter.is_ended(), // 此时已经结束 | 刚好超过
@@ -742,7 +741,7 @@ mod tests {
         iter.buffer_transfer_mut(|c| d.push(c));
 
         asserts! {
-            d => "d" // 转交出来的字符串是"d"
+            d => "d", // 转交出来的字符串是"d"
             iter.head() => 3, // 此时头索引不变
             iter.is_began() // 此时已开始迭代
             iter.is_ended() // 此时已经结束
