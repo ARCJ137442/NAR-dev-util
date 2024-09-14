@@ -17,7 +17,7 @@
 Cargo状态：
 
 [![crates.io](https://img.shields.io/crates/v/nar_dev_utils?style=for-the-badge)](https://crates.io/crates/nar_dev_utils)
-[![docs.rs](https://img.shields.io/docsrs/narust-158?style=for-the-badge)](https://docs.rs/nar_dev_utils)
+[![docs.rs](https://img.shields.io/docsrs/nar_dev_utils?style=for-the-badge)](https://docs.rs/nar_dev_utils)
 ![Crate Size](https://img.shields.io/crates/size/nar_dev_utils?style=for-the-badge)
 
 ![Recent Downloads](https://img.shields.io/crates/dr/nar_dev_utils?style=for-the-badge)
