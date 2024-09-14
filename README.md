@@ -61,3 +61,5 @@ Cargo状态：
 - ✨字符串⇒字符迭代器：`str::into_chars`
 - ✨`Option`、`Result`增强：合并、转换（`Err`）
 - ✨枚举联合：使用枚举`enum`定义类似TypeScript`A | B | C`的「联合类型」
+- ✨`Void`特性：销毁表达式以简化类 `{ expr; }` 即 `()` 的语法
+- ✨「引用计数」功能接口：统一表示 `Rc<RefCell<T>>` 与 `Arc<Mutex<T>>` 等「共享引用」类型
