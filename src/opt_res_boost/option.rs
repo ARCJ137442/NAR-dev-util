@@ -68,3 +68,70 @@ impl<T> OptionBoost<T> for Option<T> {
         }
     }
 }
+
+/// 用于围绕[`Option`]实现辅助方法
+/// * 🎯某个类型与[`Option`]联动的特性
+pub trait BoostWithOption: Sized {
+    /// 根据某条件把自身变为可选值
+    ///
+    /// ## 例子
+    ///
+    /// ```rust
+    /// use nar_dev_utils::BoostWithOption;
+    ///
+    /// let is_even = |v: &_| v % 2 == 0;
+    /// let [a, b, c, d] = [1, 2, 3, 4];
+    /// assert_eq!(a.option(is_even), None);
+    /// assert_eq!(b.option(is_even), Some(2));
+    /// assert_eq!(c.option(is_even), None);
+    /// assert_eq!(d.option(is_even), Some(4));
+    /// ```
+    #[inline]
+    fn option<C>(self, criterion: C) -> Option<Self>
+    where
+        C: FnOnce(&Self) -> bool,
+    {
+        Some(self).filter(criterion)
+    }
+
+    /// 将自身封装为[`Some`]
+    /// * ✨本质相当于`self.option(|_| true)`
+    ///
+    /// ## 例子
+    ///
+    /// ```rust
+    /// use nar_dev_utils::BoostWithOption;
+    ///
+    /// let [a, b, c, d] = [1, 2, 3, 4];
+    /// assert_eq!(a.some(), Some(1));
+    /// assert_eq!(b.some(), Some(2));
+    /// assert_eq!(c.some(), Some(3));
+    /// assert_eq!(d.some(), Some(4));
+    /// ```
+    #[inline]
+    fn some(self) -> Option<Self> {
+        Some(self)
+    }
+
+    /// 将自身封装为[`None`]
+    /// * ✨本质相当于`self.option(|_| false)`
+    ///
+    /// ## 例子
+    ///
+    /// ```rust
+    /// use nar_dev_utils::BoostWithOption;
+    ///
+    /// let [a, b, c, d] = [1, 2, 3, 4];
+    /// assert_eq!(a.none(), None);
+    /// assert_eq!(b.none(), None);
+    /// assert_eq!(c.none(), None);
+    /// assert_eq!(d.none(), None);
+    /// ```
+    #[inline]
+    fn none(self) -> Option<Self> {
+        None
+    }
+}
+
+/// 为所有类型实现[`BoostWithOption`]
+impl<T: Sized> BoostWithOption for T {}
